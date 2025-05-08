@@ -1,0 +1,4 @@
+agno==1.4.5
+fastapi==0.104.1
+google-genai
+uvicorn==0.24.0
