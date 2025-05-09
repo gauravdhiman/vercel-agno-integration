@@ -29,12 +29,8 @@ app.add_middleware(
 )
 
 # --- Initialize Agent and Adapter ---
-# Replace this with your actual Agno agent/team instantiation
-my_actual_agent = Agent(
-    name="MyAgnoAgent", 
-    model=Gemini(id="gemini-2.5-flash-preview-04-17"),
-    instructions="You are a helpful assistant", 
-    debug_mode=True) # Or Team(...)
+from agent import create_agent
+my_actual_agent = create_agent()
 adapter = AgnoVercelAdapter(agent=my_actual_agent)
 
 # --- API Endpoint ---
@@ -63,7 +59,7 @@ async def handle_chat(request: ChatRequest):
     print(f"Streaming response with session_id: {session_id}, user_id: {user_id}")  # Debug logging
     vercel_stream = adapter.stream_response(
         message=user_input,
-        messages=request.messages, # Pass the full history
+        messages=request.messages[:-1] or [], # Pass the full history
         session_id=session_id,
         user_id=user_id
         # Add any other kwargs needed by your agent's arun method

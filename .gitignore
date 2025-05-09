@@ -1,5 +1,15 @@
 # Node.js dependencies
 **/node_modules/
+**/.pnp
+**/.pnp.*
+**/.yarn/*
+!**/.yarn/patches
+!**/.yarn/plugins
+!**/.yarn/releases
+!**/.yarn/versions
+
+# temp folder for anything
+**/tmp
 
 # Python virtual environments
 **/.venv*
@@ -49,6 +59,7 @@
 
 # TypeScript build info
 **/*.tsbuildinfo
+**/next-env.d.ts
 
 # Python packaging
 **/*.egg-info/
@@ -59,3 +70,9 @@
 **/.Trashes
 **/ehthumbs.db
 **/Thumbs.db
+
+# Vercel
+**/.vercel
+
+# Misc
+**/*.pem

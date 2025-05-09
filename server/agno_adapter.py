@@ -37,6 +37,7 @@ class AgnoVercelAdapter:
     to trigger frontend actions.
     """
     PROXY_TOOL_NAME = "call_frontend_action"
+    FRONTEND_TOOL_DISPLAY_NAME = "show_tool_call_details"
 
     def __init__(self, agent: Agent):
         if not isinstance(agent, Agent): # Simplified to just Agent for clarity
@@ -157,11 +158,18 @@ class AgnoVercelAdapter:
                 if proxy_tool_called:
                     continue # Skip the rest of the loop for this specific Agno event
 
-                # Handle start of *other* (backend) tools if necessary
-                # else:
-                #     # Decide how to represent backend tool calls in Vercel stream
-                #     # e.g., yield DATA_PART or ignore
-                #     pass
+                # Handle start of backend tools
+                else:
+                    for tool_call in tools:
+                        vercel_tool_call_request = {
+                            "toolCallId": tool_call.get("tool_call_id", f"tool_{uuid4()}"),
+                            "toolName": self.FRONTEND_TOOL_DISPLAY_NAME,
+                            "args": {
+                                "backend_tool_name": tool_call.get("tool_name", "unknown_tool"),
+                                "backend_tool_args": tool_call.get("tool_args", {})
+                            }
+                        }
+                        yield self._format_vercel_data_stream(TOOL_CALL_PART, vercel_tool_call_request).encode("utf-8")
 
             # --- Handle Other Agno Events ---
             elif event == RunEvent.run_response and content:
@@ -213,43 +221,25 @@ class AgnoVercelAdapter:
         Parses incoming tool results and passes them to the agent.
         """
         # --- Ensure Proxy Tool is Registered ---
-        # (This is now done in __init__ or can be ensured here if adapter is short-lived)
         self._ensure_proxy_tool_registered()
-        # Force model update if necessary after registration (depends on Agno implementation)
-        # self.agent.update_model(session_id=session_id or "temp_session")
 
-        # --- Prepare Messages & Extract Tool Results ---
-        agno_input_message = message
-        tool_results_for_agno = []
-        agno_message_history = [] # Build history for Agno if needed
+        agno_message_history = []
 
         for msg in messages:
             # Convert Vercel message format to Agno Message if necessary for history
-            # agno_msg = AgnoMessage(role=msg['role'], content=msg['content'], ...)
-            # agno_message_history.append(agno_msg)
+            agno_msg = AgnoMessage(role=msg['role'], content=msg['content'])
+            agno_message_history.append(agno_msg)
 
-            if msg.get("role") == "tool":
-                 # Map Vercel tool result back to Agno's expected format
-                 # This assumes Agno needs a list of dicts with 'tool_call_id' and 'content'/'result'
-                 tool_results_for_agno.append({
-                     "tool_call_id": msg.get("tool_call_id"),
-                     "content": msg.get("content") # Or "result" depending on Agno
-                 })
-                 logger.debug(f"Passing tool result back to Agno: {msg.get('tool_call_id')}")
-
-        if tool_results_for_agno:
-             kwargs["tool_results"] = tool_results_for_agno # Add to agent kwargs
 
         # --- Start the Agno agent stream ---
-        # Pass the latest message and potentially the history + tool results
         agno_stream_generator = await self.agent.arun(
-            message=agno_input_message,
-            # messages=agno_message_history, # Pass history if agent uses it
+            message=message,
+            messages=agno_message_history,
             session_id=session_id,
             user_id=user_id,
             stream=True,
-            stream_intermediate_steps=True, # Important to catch tool events
-            **kwargs # Includes tool_results if any
+            stream_intermediate_steps=True,
+            **kwargs
         )
 
         # --- Yield the translated stream ---

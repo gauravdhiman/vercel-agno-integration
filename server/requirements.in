@@ -1,4 +1,7 @@
 agno==1.4.5
 fastapi==0.104.1
 google-genai
+googlesearch-python
+pycountry
+sqlalchemy
 uvicorn==0.24.0
