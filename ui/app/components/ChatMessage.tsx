@@ -12,12 +12,8 @@ export function ChatMessage({ message }: { message: Message }) {
           isUser ? 'bg-blue-400 text-white font-medium' : 'bg-gray-100 text-gray-800'
         }`}
       >
-        <div className="whitespace-pre-wrap prose dark:prose-invert max-w-none">
-          <ReactMarkdown
-            components={{
-              p: ({ children, ...props }) => <p {...props}>{children}</p>
-            }}
-          >
+        <div className="whitespace-pre-wrap prose dark:prose-invert max-w-none [&>*]:my-0 prose-li:my-0 prose-table:border prose-table:border-collapse prose-td:border prose-td:px-4 prose-td:py-2 prose-th:border prose-th:px-4 prose-th:py-2">
+          <ReactMarkdown unwrapDisallowed={true}>
             {message.content}
           </ReactMarkdown>
         </div>

@@ -14,6 +14,7 @@ from agno.models.message import Message as AgnoMessage
 from agno.run.response import RunEvent, RunResponse
 from agno.run.team import TeamRunResponse # Keep for potential future use
 from agno.tools.function import Function
+from agno.utils.log import log_debug, log_error, log_info
 
 # --- Vercel AI SDK Data Stream Protocol Type IDs ---
 TEXT_PART = "0"
@@ -27,8 +28,6 @@ REASONING_PART = "g"
 SOURCE_PART = "h"
 # ... add other type IDs as needed ...
 
-logger = logging.getLogger("AgnoVercelAdapter")
-logging.basicConfig(level=logging.INFO) # Or DEBUG for more verbosity
 
 class AgnoVercelAdapter:
     """
@@ -55,11 +54,11 @@ class AgnoVercelAdapter:
         # Check if a tool with the same name already exists
         if not any(getattr(t, 'name', None) == self.PROXY_TOOL_NAME for t in self.agent.tools):
             self.agent.tools.append(proxy_tool_func)
-            logger.info(f"Registered proxy tool '{self.PROXY_TOOL_NAME}' with the agent.")
+            log_info(f"[Agno-Vercel]{self.agent.name}: Registered proxy tool '{self.PROXY_TOOL_NAME}' with the agent.")
             # Optionally force model update if Agno requires it after adding tools
             # self.agent.update_model(session_id="init_session")
         else:
-             logger.debug(f"Proxy tool '{self.PROXY_TOOL_NAME}' already registered.")
+             log_debug(f"[Agno-Vercel]{self.agent.name}: Proxy tool '{self.PROXY_TOOL_NAME}' already registered.")
 
 
     @staticmethod
@@ -71,7 +70,7 @@ class AgnoVercelAdapter:
             else:
                  payload = json.dumps(data, default=str)
         except TypeError as e:
-            logger.error(f"Serialization error for type {type_id}: {data}. Error: {e}")
+            log_error(f"[Agno-Vercel]: Serialization error for type {type_id}: {data}. Error: {e}")
             payload = json.dumps({"error": "Serialization failed", "details": str(e)})
             type_id = ERROR_PART
         return f"{type_id}:{payload}\n"
@@ -108,7 +107,7 @@ class AgnoVercelAdapter:
         Returns a simple confirmation string *to the Agno agent*.
         The actual frontend trigger happens in _agno_to_vercel_stream.
         """
-        logger.info(f"Proxy tool '{self.PROXY_TOOL_NAME}' called by agent for frontend action: '{frontend_tool_name}'")
+        log_info(f"[Agno-Vercel]{self.agent.name}: Proxy tool '{self.PROXY_TOOL_NAME}' called by agent for frontend action: '{frontend_tool_name}'")
         # This simple string is the result fed back into the Agno agent's internal loop
         return f"Frontend action '{frontend_tool_name}' requested."
 
@@ -137,7 +136,7 @@ class AgnoVercelAdapter:
                     # Check if this specific tool call is our proxy tool
                     if tool_call.get("tool_name") == self.PROXY_TOOL_NAME:
                         proxy_tool_called = True
-                        logger.debug(f"Intercepted start of proxy tool call: {tool_call.get('tool_call_id')}")
+                        log_debug(f"[Agno-Vercel]{self.agent.name}: Intercepted start of proxy tool call: {tool_call.get('tool_call_id')}")
 
                         # Extract the *actual* frontend details from the proxy tool's arguments
                         proxy_args_raw = tool_call.get("tool_args", {})
