@@ -296,8 +296,6 @@ class AgnoVercelAdapter:
                             log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Skipping already processed tool call completion: {tool_call_id}")
                             continue
 
-                        log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Tool Call Completion Date: {tool_call_data}")
-
                         # Mark this tool call completion as processed
                         self._processed_tool_call_completions.add(tool_call_id)
 

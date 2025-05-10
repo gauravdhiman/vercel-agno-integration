@@ -6,22 +6,10 @@ import React, { useRef, useEffect, useState } from 'react';
 import { ChatMessage } from './components/ChatMessage';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { InputArea } from './components/InputArea';
-import ToolInfoCard from './components/ToolInfoCard';
-
-// Define a type for tool invocation data to avoid deprecated warnings
-interface ToolInvocationData {
-  state: 'call' | 'result' | 'partial-call';
-  step?: number;
-  toolCallId: string;
-  toolName: string;
-  args: any;
-  result?: any;
-}
 
 // --- Main Chat Component ---
 export default function Page() {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [toolInfoCards, setToolInfoCards] = useState<any[]>([]);
 
   const [error, setError] = useState<Error | null>(null);
   const [showDebug, setShowDebug] = useState(false);
@@ -34,11 +22,6 @@ export default function Page() {
     }
   });
   console.log('messages', messages);
-
-  // Log the current status
-  useEffect(() => {
-    console.log('Chat status:', status);
-  }, [status]);
 
   const lastMessage = messages[messages.length - 1];
   const lastAssistantMessage = (lastMessage?.role === 'assistant') ? lastMessage : undefined;
@@ -57,103 +40,6 @@ export default function Page() {
   };
 
   const isInputDisabled = status !== 'ready' || pendingToolInvocations.length > 0;
-
-  // Process tool invocations from messages
-  useEffect(() => {
-    // Add debugging to see what's in the messages
-    console.log("Processing messages for tool invocations:", JSON.stringify(messages, null, 2));
-
-    // Check for text content in the last assistant message
-    const lastAssistantMessageWithContent = messages
-      .filter(m => m.role === 'assistant' && m.content)
-      .pop();
-
-    if (lastAssistantMessageWithContent) {
-      console.log("Last assistant message with content:", lastAssistantMessageWithContent);
-    }
-
-    // Find all messages with tool invocations (either in toolInvocations or parts)
-    const messagesWithTools = messages.filter(m => {
-      if (m.role !== 'assistant') return false;
-
-      // Check for tool invocations in parts array (preferred method)
-      const hasToolInParts = m.parts && m.parts.some(p => p.type === 'tool-invocation');
-
-      // Check for tool invocations in deprecated toolInvocations array
-      const hasToolInvocations = Array.isArray((m as any).toolInvocations) && (m as any).toolInvocations.length > 0;
-
-      return hasToolInParts || hasToolInvocations;
-    });
-
-    if (messagesWithTools.length > 0) {
-      // Extract all tool invocations from messages
-      const allToolInvocations = messagesWithTools.flatMap(message => {
-        // First try to get tool invocations from parts (preferred method)
-        if (message.parts && message.parts.some(p => p.type === 'tool-invocation')) {
-          return message.parts
-            .filter(p => p.type === 'tool-invocation' && 'toolInvocation' in p)
-            .map(p => {
-              const tool = p.toolInvocation as any; // Type assertion to avoid TS errors
-              return {
-                id: tool.toolCallId,
-                tool_name: tool.toolName,
-                tool_description: `${tool.toolName} tool call`,
-                tool_parameters: tool.args,
-                tool_status: tool.state === 'call' ? 'executing' :
-                            tool.state === 'result' ? 'completed' :
-                            tool.state === 'partial-call' ? 'pending' : 'failed',
-                tool_output: tool.state === 'result' ? tool.result : undefined,
-                tool_id: tool.toolCallId
-              };
-            });
-        }
-
-        // Fallback to toolInvocations if parts doesn't have tool invocations
-        const toolInvocations = (message as any).toolInvocations;
-        if (Array.isArray(toolInvocations) && toolInvocations.length > 0) {
-          return toolInvocations.map((tool: ToolInvocationData) => {
-            return {
-              id: tool.toolCallId,
-              tool_name: tool.toolName,
-              tool_description: `${tool.toolName} tool call`,
-              tool_parameters: tool.args,
-              tool_status: tool.state === 'call' ? 'executing' :
-                          tool.state === 'result' ? 'completed' :
-                          tool.state === 'partial-call' ? 'pending' : 'failed',
-              tool_output: tool.state === 'result' ? tool.result : undefined,
-              tool_id: tool.toolCallId
-            };
-          });
-        }
-
-        return [];
-      });
-
-      // Log the extracted tool invocations for debugging
-      console.log("Extracted tool invocations:", allToolInvocations);
-
-      // Update tool info cards, avoiding duplicates and updating existing ones
-      if (allToolInvocations.length > 0) {
-        setToolInfoCards(prev => {
-          const existingIds = new Set(prev.map(card => card.id));
-          const uniqueNewTools = allToolInvocations.filter(tool => !existingIds.has(tool.id));
-
-          // Update existing cards with new status/output
-          const updatedExisting = prev.map(card => {
-            const update = allToolInvocations.find(tool => tool.id === card.id);
-            if (update && update.tool_status !== card.tool_status) {
-              console.log(`Tool status changed for ${card.tool_name}: ${card.tool_status} -> ${update.tool_status}`);
-            }
-            return update || card;
-          });
-
-          const result = [...updatedExisting, ...uniqueNewTools];
-          console.log("Updated tool info cards:", result);
-          return result;
-        });
-      }
-    }
-  }, [messages]);
 
   // Focus input when ready
   useEffect(() => {
@@ -226,17 +112,6 @@ export default function Page() {
             <ChatMessage key={m.id} message={m} />
           ))}
 
-          {/* Tool Info Cards */}
-          {toolInfoCards.length > 0 && (
-            <div className="mb-4">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">Tool Executions</h3>
-              <div className="space-y-3">
-                {toolInfoCards.map((toolInfo) => (
-                  <ToolInfoCard key={toolInfo.id} tool={toolInfo} />
-                ))}
-              </div>
-            </div>
-          )}
 
 
           {/* Pending Tool Invocations */}

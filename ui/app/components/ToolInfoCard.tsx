@@ -1,11 +1,16 @@
+// ToolInfoCard.tsx
+/**
+ * This component displays appropriate information about the backend tools called by the agent.
+ */
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface ToolInfo {
   tool_name: string;
   tool_description: string;
-  tool_parameters?: object;
+  tool_parameters?: any;
   tool_status: 'pending' | 'executing' | 'completed' | 'failed';
-  tool_output?: object;
+  tool_output?: any;
   tool_id?: string;
   tool_error?: string;
 }
@@ -15,27 +20,86 @@ interface ToolInfoCardProps {
 }
 
 const ToolInfoCard: React.FC<ToolInfoCardProps> = ({ tool }) => {
+  // Default to collapsed state
   const [expanded, setExpanded] = useState(false);
 
-  // Log tool status for debugging
-  console.log(`ToolInfoCard rendering for ${tool.tool_name} with status: ${tool.tool_status}`, tool);
+  // Extract actual tool name and args if available
+  const actualToolName = tool.tool_parameters?.actual_tool_name;
+  const actualToolArgs = tool.tool_parameters?.actual_tool_args;
+
+  // For the result, check if it's in the expected format
+  const actualToolResult = tool.tool_output;
 
   // Determine if the tool has details to show
   const hasDetails = tool.tool_parameters || tool.tool_output || tool.tool_error;
 
-  // Force expanded state to true when tool is completed
+  // Track if the user has manually collapsed the card
+  const [userCollapsed, setUserCollapsed] = useState(false);
+
+  // Handle expand/collapse toggle with user preference tracking
+  const handleToggleExpand = () => {
+    setUserCollapsed(!expanded);
+    setExpanded(!expanded);
+  };
+
+  // Only auto-expand on completion if the user hasn't manually collapsed it
   useEffect(() => {
-    if (tool.tool_status === 'completed' && !expanded && hasDetails) {
-      console.log(`Auto-expanding completed tool: ${tool.tool_name}`);
-      setExpanded(true);
+    if (tool.tool_status === 'completed' && !expanded && hasDetails && !userCollapsed) {
+      setExpanded(false);
     }
-  }, [tool.tool_status, expanded, hasDetails, tool.tool_name]);
+  }, [tool.tool_status, expanded, hasDetails, userCollapsed]);
 
   // Determine if the tool is in a loading state
   const isLoading = tool.tool_status === 'pending' || tool.tool_status === 'executing';
 
   // Determine if the card should be expandable
   const isExpandable = hasDetails && !isLoading;
+
+  // Format tool name to be more human-readable
+  const formatToolName = (name: string): string => {
+    if (!name) return '';
+
+    // Replace underscores and hyphens with spaces
+    let formatted = name.replace(/[_-]/g, ' ');
+
+    // Handle camelCase by adding spaces before capital letters
+    formatted = formatted.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+    // Capitalize first letter of each word
+    formatted = formatted.split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+
+    return formatted;
+  };
+
+  // Intelligently format tool output based on its type and content
+  const formatToolOutput = (output: any): { type: 'json' | 'markdown' | 'text', content: string } => {
+    // If output is null or undefined, return empty string
+    if (output === null || output === undefined) {
+      return { type: 'text', content: '' };
+    }
+
+    // If output is already a string
+    if (typeof output === 'string') {
+      // Check if it's a stringified JSON
+      try {
+        const parsedJson = JSON.parse(output);
+        // If we can parse it as JSON, return it as formatted JSON
+        return { type: 'json', content: JSON.stringify(parsedJson, null, 2) };
+      } catch (e) {
+        // Check if it looks like markdown (contains # or * or `)
+        if (output.match(/(?:^|\n)#{1,6}\s|[*_]{1,2}[^*_]+[*_]{1,2}|`{1,3}[^`]+`{1,3}/)) {
+          return { type: 'markdown', content: output };
+        }
+        // Otherwise, it's just plain text
+        return { type: 'text', content: output };
+      }
+    }
+
+    // If output is an object or array, stringify it as JSON
+    return { type: 'json', content: JSON.stringify(output, null, 2) };
+  };
 
   // Get status badge styling
   const getStatusBadgeClass = () => {
@@ -57,10 +121,13 @@ const ToolInfoCard: React.FC<ToolInfoCardProps> = ({ tool }) => {
       {/* Card Header - Always visible */}
       <div
         className={`flex justify-between items-center mb-2 ${isExpandable ? 'cursor-pointer' : ''}`}
-        onClick={() => isExpandable && setExpanded(!expanded)}
+        onClick={() => isExpandable && handleToggleExpand()}
       >
         <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold">{tool.tool_name}</h3>
+          {/* Show human-readable tool name */}
+          <h3 className="text-lg font-semibold">
+            {formatToolName(actualToolName || tool.tool_name)}
+          </h3>
 
           {/* Loading Spinner */}
           {isLoading && (
@@ -79,6 +146,10 @@ const ToolInfoCard: React.FC<ToolInfoCardProps> = ({ tool }) => {
             <button
               className="text-gray-500 hover:text-gray-700 focus:outline-none"
               aria-label={expanded ? "Collapse" : "Expand"}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent double triggering with the parent onClick
+                handleToggleExpand();
+              }}
             >
               <svg
                 className={`h-5 w-5 transition-transform ${expanded ? 'rotate-180' : ''}`}
@@ -94,48 +165,104 @@ const ToolInfoCard: React.FC<ToolInfoCardProps> = ({ tool }) => {
       </div>
 
       {/* Brief Description - Always visible */}
-      <p className="text-sm text-gray-600 mb-2">{tool.tool_description}</p>
+      <p className="text-sm text-gray-600 mb-2">
+        {actualToolName ? `Backend tool execution` : tool.tool_description}
+      </p>
 
       {/* Expandable Details Section */}
       {expanded && (
         <div className="mt-3 pt-3 border-t border-gray-200">
-          {/* Tool ID if available */}
-          {tool.tool_id && (
-            <div className="mb-3">
-              <h4 className="text-sm font-medium mb-1">Tool ID:</h4>
-              <p className="text-xs text-gray-600">{tool.tool_id}</p>
-            </div>
-          )}
+          {/* Tool ID removed as per request */}
 
           {/* Parameters Section */}
-          {tool.tool_parameters && (
-            <div className="mb-3">
-              <h4 className="text-sm font-medium mb-1">Parameters:</h4>
-              <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
-                {JSON.stringify(tool.tool_parameters, null, 2)}
-              </pre>
-            </div>
-          )}
+          {tool.tool_parameters && (() => {
+            const formattedParams = formatToolOutput(actualToolArgs || tool.tool_parameters);
+
+            return (
+              <div className="mb-3">
+                <h4 className="text-sm font-medium mb-1">Parameters:</h4>
+
+                {/* Render based on detected type */}
+                {formattedParams.type === 'json' && (
+                  <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
+                    {formattedParams.content}
+                  </pre>
+                )}
+
+                {formattedParams.type === 'markdown' && (
+                  <div className="text-xs bg-gray-50 p-2 rounded overflow-x-auto prose prose-sm max-w-none">
+                    <ReactMarkdown>{formattedParams.content}</ReactMarkdown>
+                  </div>
+                )}
+
+                {formattedParams.type === 'text' && (
+                  <div className="text-xs bg-gray-50 p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                    {formattedParams.content}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Output Section */}
-          {tool.tool_output && (
-            <div className="mb-3">
-              <h4 className="text-sm font-medium mb-1">Output:</h4>
-              <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
-                {JSON.stringify(tool.tool_output, null, 2)}
-              </pre>
-            </div>
-          )}
+          {tool.tool_output && (() => {
+            const formattedOutput = formatToolOutput(actualToolResult);
+
+            return (
+              <div className="mb-3">
+                <h4 className="text-sm font-medium mb-1">Output:</h4>
+
+                {/* Render based on detected type */}
+                {formattedOutput.type === 'json' && (
+                  <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
+                    {formattedOutput.content}
+                  </pre>
+                )}
+
+                {formattedOutput.type === 'markdown' && (
+                  <div className="text-xs bg-gray-50 p-2 rounded overflow-x-auto prose prose-sm max-w-none">
+                    <ReactMarkdown>{formattedOutput.content}</ReactMarkdown>
+                  </div>
+                )}
+
+                {formattedOutput.type === 'text' && (
+                  <div className="text-xs bg-gray-50 p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                    {formattedOutput.content}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Error Section */}
-          {tool.tool_error && (
-            <div className="mb-3">
-              <h4 className="text-sm font-medium text-red-600 mb-1">Error:</h4>
-              <pre className="text-xs bg-red-50 text-red-700 p-2 rounded overflow-x-auto">
-                {tool.tool_error}
-              </pre>
-            </div>
-          )}
+          {tool.tool_error && (() => {
+            const formattedError = formatToolOutput(tool.tool_error);
+
+            return (
+              <div className="mb-3">
+                <h4 className="text-sm font-medium text-red-600 mb-1">Error:</h4>
+
+                {/* Render based on detected type */}
+                {formattedError.type === 'json' && (
+                  <pre className="text-xs bg-red-50 text-red-700 p-2 rounded overflow-x-auto">
+                    {formattedError.content}
+                  </pre>
+                )}
+
+                {formattedError.type === 'markdown' && (
+                  <div className="text-xs bg-red-50 text-red-700 p-2 rounded overflow-x-auto prose prose-sm max-w-none">
+                    <ReactMarkdown>{formattedError.content}</ReactMarkdown>
+                  </div>
+                )}
+
+                {formattedError.type === 'text' && (
+                  <div className="text-xs bg-red-50 text-red-700 p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                    {formattedError.content}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 
