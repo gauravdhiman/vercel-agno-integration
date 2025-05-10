@@ -45,7 +45,20 @@ export function ChatMessage({ message }: { message: Message }) {
     .filter(inv => inv.toolInvocation.state === 'result')
     .map(p => p.toolInvocation) || [];
 
-  const messageParts = message?.parts?.filter(isTextPart) || [{ type: 'text', text: message.content }];
+  // Handle the case where the message has content but no parts
+  // This happens with the final response from the assistant
+  let messageParts: TextPart[] = [];
+
+  if (message.parts && message.parts.length > 0) {
+    // If the message has parts, extract the text parts
+    messageParts = message.parts.filter(isTextPart);
+  } else if (message.content) {
+    // If the message has content but no parts, create a text part from the content
+    messageParts = [{ type: 'text', text: message.content }];
+  }
+
+  // Log the message and parts for debugging
+  console.log("Message:", message.id, "Content:", message.content, "Parts:", messageParts);
 
   let lastPart: TextPart | undefined;
   let remainingParts: TextPart[] = [];

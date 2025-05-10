@@ -63,21 +63,38 @@ frontend_tools = [
     ),
     FrontendToolSchema(
         name="display_tool_info",
-        description="Displays detailed information about a tool in the UI including execution status and results.",
+        description="Displays detailed information about a tool in the UI including execution status and results. Shows a spinner for in-progress tools and allows expanding completed tools to view details.",
         parameters={
             "type": "object",
             "properties": {
-                "tool_name": {"type": "string", "description": "The name of the tool to display."},
-                "tool_description": {"type": "string", "description": "Detailed description of the tool's functionality."},
-                "tool_parameters": {"type": "object", "description": "JSON schema of the tool's parameters."},
+                "tool_name": {
+                    "type": "string",
+                    "description": "The name of the tool to display."
+                },
+                "tool_description": {
+                    "type": "string",
+                    "description": "Detailed description of the tool's functionality."
+                },
+                "tool_id": {
+                    "type": "string",
+                    "description": "Optional unique identifier for the tool call."
+                },
+                "tool_parameters": {
+                    "type": "object",
+                    "description": "Parameters passed to the tool."
+                },
                 "tool_status": {
                     "type": "string",
                     "enum": ["pending", "executing", "completed", "failed"],
-                    "description": "Current execution status of the tool."
+                    "description": "Current execution status of the tool. 'pending' shows a spinner with gray badge, 'executing' shows a spinner with blue badge, 'completed' shows a green badge, 'failed' shows a red badge."
                 },
                 "tool_output": {
                     "type": "object",
-                    "description": "Output or results from the tool execution."
+                    "description": "Output or results from the tool execution. Only shown when the user expands the card."
+                },
+                "tool_error": {
+                    "type": "string",
+                    "description": "Error message if the tool execution failed. Only shown when the user expands the card."
                 }
             },
             "required": ["tool_name", "tool_description", "tool_status"]
