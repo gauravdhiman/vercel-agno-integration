@@ -1,15 +1,11 @@
 'use client';
 
 import { useChat, type Message } from '@ai-sdk/react';
-import { type ToolInvocation } from '@ai-sdk/ui-utils'; 
-import React, { useState, useRef, useEffect } from 'react';
+import { type ToolInvocation } from '@ai-sdk/ui-utils';
+import React, { useRef, useEffect } from 'react';
 import { ChatMessage } from './components/ChatMessage';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { InputArea } from './components/InputArea';
-
-
-
-
 
 // --- Main Chat Component ---
 export default function Page() {
@@ -21,9 +17,9 @@ export default function Page() {
   const lastMessage = messages[messages.length - 1];
   const lastAssistantMessage = (lastMessage?.role === 'assistant') ? lastMessage : undefined;
 
-  const pendingToolInvocations = lastAssistantMessage?.toolInvocations?.filter(
-    inv => inv.state === 'call' && inv.toolName === 'ask_user_confirmation'
-  ) || [];
+  const pendingToolInvocations = lastAssistantMessage?.parts?.filter(
+    inv => inv.type === 'tool-invocation' && 'toolInvocation' in inv && inv.toolInvocation.state === 'call'
+  ).map(p => 'toolInvocation' in p ? p.toolInvocation : null).filter(Boolean) || [];
 
   const handleConfirm = (toolCallId: string, result: any) => {
     addToolResult({ toolCallId, result: { confirmed: result } });
@@ -55,20 +51,39 @@ export default function Page() {
             <ChatMessage key={m.id} message={m} />
           ))}
 
+          {/* Tool Info Cards */}
+          {/* {messages
+            .filter(m => m.role === 'tool' && m.name === 'display_tool_info')
+            .map((message, i) => {
+              try {
+                const toolInfo = typeof message.content === 'string'
+                  ? JSON.parse(message.content)
+                  : message.content;
+                return <ToolInfoCard key={i} tool={toolInfo} />;
+              } catch (e) {
+                console.error('Failed to parse tool info:', e);
+                return null;
+              }
+            })} */}
+
+
           {/* Pending Tool Invocations */}
-          {pendingToolInvocations.map(invocation => (
-            <ConfirmationModal
-              key={invocation.toolCallId}
-              toolInvocation={invocation}
-              onConfirm={handleConfirm}
-              onCancel={handleCancel}
-            />
-          ))}
+          {pendingToolInvocations.map(invocation => {
+            if (invocation && invocation.toolName === 'ask_user_confirmation') {
+              return <ConfirmationModal
+                key={invocation.toolCallId}
+                toolInvocation={invocation as ToolInvocation}
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+              />
+            }
+            return <></>
+          })}
         </div>
       </div>
 
       {/* Input Area */}
-      <InputArea 
+      <InputArea
         inputRef={inputRef}
         input={input}
         handleInputChange={handleInputChange}

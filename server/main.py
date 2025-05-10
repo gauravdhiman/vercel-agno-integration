@@ -4,22 +4,24 @@ load_dotenv()
 import os
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
 # --- Adapter and Agno Imports ---
 from agno_adapter import AgnoVercelAdapter
-# Replace with your actual Agno agent/team import and setup
 from agno.agent import Agent
 from agno.team import Team
 from agno.models.google import Gemini
+
+from agent import create_agent
+from frontend_tool_schemas import frontend_tools
 
 # --- FastAPI Setup ---
 app = FastAPI()
 
 # Add CORS middleware
-from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins for testing
@@ -29,9 +31,13 @@ app.add_middleware(
 )
 
 # --- Initialize Agent and Adapter ---
-from agent import create_agent
+
 my_actual_agent = create_agent()
-adapter = AgnoVercelAdapter(agent=my_actual_agent)
+
+adapter = AgnoVercelAdapter(
+    agent=my_actual_agent,
+    frontend_tool_schemas=frontend_tools
+)
 
 # --- API Endpoint ---
 class ChatRequest(BaseModel):
@@ -45,9 +51,9 @@ class ChatRequest(BaseModel):
 async def handle_chat(request: ChatRequest):
     """Handles chat requests from the Vercel AI SDK UI."""
     print(f"Received chat request: {request}")  # Debug logging
-    last_message = request.messages[-1] if request.messages else None
-    user_input = last_message.get("content", "") if last_message else ""
-    print(f"Processing message: {user_input}")  # Debug logging
+    # last_message = request.messages[-1] if request.messages else None
+    # user_input = last_message.get("content", "") if last_message else ""
+    # print(f"Processing message: {user_input}")  # Debug logging
 
     # Extract session_id and user_id (example: sent via custom data or specific field)
     session_id = request.sessionId or request.data.get("sessionId") if request.data else None
@@ -58,7 +64,6 @@ async def handle_chat(request: ChatRequest):
     # Also pass any other relevant data from the request body if needed
     print(f"Streaming response with session_id: {session_id}, user_id: {user_id}")  # Debug logging
     vercel_stream = adapter.stream_response(
-        message=user_input,
         messages=request.messages or [], # Pass the full history
         session_id=session_id,
         user_id=user_id
