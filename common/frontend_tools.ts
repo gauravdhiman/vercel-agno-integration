@@ -1,6 +1,6 @@
 /**
  * Frontend Tools Schema Definitions
- * 
+ *
  * This file serves as the single source of truth for frontend tool schemas
  * used by both the frontend and backend. The TypeScript definitions here
  * are used directly by the frontend and are converted to Python for the backend.
@@ -16,7 +16,8 @@
 export enum FrontendToolName {
   ASK_USER_CONFIRMATION = "ask_user_confirmation",
   DISPLAY_PRODUCT_CARD = "display_product_card",
-  DISPLAY_TOOL_INFO = "display_tool_info"
+  DISPLAY_TOOL_INFO = "display_tool_info",
+  CHANGE_BACKGROUND_COLOR = "change_background_color"
 }
 
 // -----------------------------------------------------------------------------
@@ -29,10 +30,10 @@ export enum FrontendToolName {
 export interface ButtonConfig {
   /** The text to display on the button */
   label: string;
-  
+
   /** The value to return when this button is clicked */
   value: string | boolean | number;
-  
+
   /** The visual style of the button */
   style?: "primary" | "secondary" | "danger";
 }
@@ -43,14 +44,14 @@ export interface ButtonConfig {
 export interface AskUserConfirmationParams {
   /** Title / header of the confirmation modal */
   title?: string;
-  
+
   /** The question to present to the user for confirmation */
   question_text: string;
-  
+
   /** Optional additional context or details to display with the confirmation question */
   confirmation_context?: string;
-  
-  /** 
+
+  /**
    * Array of button configurations to display in the modal.
    * If not provided, default 'Confirm' and 'Cancel' buttons will be shown.
    */
@@ -63,13 +64,13 @@ export interface AskUserConfirmationParams {
 export interface DisplayProductCardParams {
   /** The unique ID of the product */
   product_id: string;
-  
+
   /** Name of the product */
   product_name: string;
-  
+
   /** Price of the product */
   price: number;
-  
+
   /** URL of the product image */
   image_url?: string;
 }
@@ -80,17 +81,17 @@ export interface DisplayProductCardParams {
 export interface DisplayToolInfoParams {
   /** The name of the tool to display */
   tool_name: string;
-  
+
   /** Detailed description of the tool's functionality */
   tool_description: string;
-  
+
   /** Optional unique identifier for the tool call */
   tool_id?: string;
-  
+
   /** Parameters passed to the tool */
   tool_parameters?: any;
-  
-  /** 
+
+  /**
    * Current execution status of the tool.
    * 'pending' shows a spinner with gray badge
    * 'executing' shows a spinner with blue badge
@@ -98,10 +99,10 @@ export interface DisplayToolInfoParams {
    * 'failed' shows a red badge
    */
   tool_status: "pending" | "executing" | "completed" | "failed";
-  
+
   /** Output or results from the tool execution. Only shown when the user expands the card. */
   tool_output?: any;
-  
+
   /** Error message if the tool execution failed. Only shown when the user expands the card. */
   tool_error?: string;
 }
@@ -109,7 +110,17 @@ export interface DisplayToolInfoParams {
 /**
  * Union type of all frontend tool parameter types
  */
-export type FrontendToolParams = 
+/**
+ * Parameters for the change_background_color tool
+ */
+export interface Change_background_colorParams {
+  /** The hex code of the color to which the background will be set, like $FFC0CB */
+  colorHexCode: string;
+
+}
+
+
+export type FrontendToolParams =
   | AskUserConfirmationParams
   | DisplayProductCardParams
   | DisplayToolInfoParams;
@@ -213,20 +224,20 @@ function getDisplayProductCardSchema(): FrontendToolSchema {
       type: "object",
       properties: {
         product_id: {
-          type: "string", 
+          type: "string",
           description: "The unique ID of the product."
         },
         product_name: {
-          type: "string", 
+          type: "string",
           description: "Name of the product."
         },
         price: {
-          type: "number", 
+          type: "number",
           description: "Price of the product."
         },
         image_url: {
-          type: "string", 
-          format: "uri", 
+          type: "string",
+          format: "uri",
           description: "URL of the product image."
         }
       },
@@ -283,11 +294,35 @@ function getDisplayToolInfoSchema(): FrontendToolSchema {
 /**
  * Get all frontend tool schemas
  */
+/**
+ * Generate JSON Schema for the change_background_color tool
+ */
+function getCHANGE_BACKGROUND_COLORSchema(): FrontendToolSchema {
+  return {
+    name: FrontendToolName.CHANGE_BACKGROUND_COLOR,
+    description: "This will set / change the background color in frontend to the given hex color code like #FFC0CB",
+    parameters: {
+        "type": "object",
+        "properties": {
+            "colorHexCode": {
+                "type": "string",
+                "description": "The hex code of the color to which the background will be set, like $FFC0CB"
+            }
+        },
+        "required": [
+            "colorHexCode"
+        ]
+    }
+  };
+}
+
+
 export function getAllFrontendToolSchemas(): FrontendToolSchema[] {
   return [
     getAskUserConfirmationSchema(),
     getDisplayProductCardSchema(),
-    getDisplayToolInfoSchema()
+    getDisplayToolInfoSchema(),
+    getCHANGE_BACKGROUND_COLORSchema()
   ];
 }
 

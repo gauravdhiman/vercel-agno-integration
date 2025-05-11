@@ -15,6 +15,7 @@ class FrontendToolName(str, Enum):
     ASK_USER_CONFIRMATION = "ask_user_confirmation"
     DISPLAY_PRODUCT_CARD = "display_product_card"
     DISPLAY_TOOL_INFO = "display_tool_info"
+    CHANGE_BACKGROUND_COLOR = "change_background_color"
 
 # -----------------------------------------------------------------------------
 # Schema Definitions
@@ -42,7 +43,7 @@ def get_ask_user_confirmation_schema() -> Dict[str, Any]:
                 },
                 "buttons": {
                     "type": "array",
-                    "description": "Array of button configurations to display in the modal. If not provided, default 'Confirm' and 'Cancel' buttons will be shown.",
+                    "description": "Array of button configurations to display in the modal. If not provided, default \'Confirm\' and \'Cancel\' buttons will be shown.",
                     "items": {
                         "type": "object",
                         "properties": {
@@ -99,7 +100,7 @@ def get_display_tool_info_schema() -> Dict[str, Any]:
                 },
                 "tool_description": {
                     "type": "string",
-                    "description": "Detailed description of the tool's functionality."
+                    "description": "Detailed description of the tool\'s functionality."
                 },
                 "tool_id": {
                     "type": "string",
@@ -112,7 +113,7 @@ def get_display_tool_info_schema() -> Dict[str, Any]:
                 "tool_status": {
                     "type": "string",
                     "enum": ["pending", "executing", "completed", "failed"],
-                    "description": "Current execution status of the tool. 'pending' shows a spinner with gray badge, 'executing' shows a spinner with blue badge, 'completed' shows a green badge, 'failed' shows a red badge."
+                    "description": "Current execution status of the tool. \'pending\' shows a spinner with gray badge, \'executing\' shows a spinner with blue badge, \'completed\' shows a green badge, \'failed\' shows a red badge."
                 },
                 "tool_output": {
                     "type": "object",
@@ -127,10 +128,28 @@ def get_display_tool_info_schema() -> Dict[str, Any]:
         }
     }
 
+def get_change_background_color_schema() -> Dict[str, Any]:
+    """Generate schema for the change_background_color tool"""
+    return {
+        "name": FrontendToolName.CHANGE_BACKGROUND_COLOR,
+        "description": "This will set / change the background color in frontend to the given hex color code like #FFC0CB",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "colorHexCode": {
+                    "type": "string",
+                    "description": "The hex code of the color to which the background will be set, like $FFC0CB"
+                }
+            },
+            "required": ["colorHexCode"]
+        }
+    }
+
 def get_all_frontend_tool_schemas() -> List[Dict[str, Any]]:
     """Get all frontend tool schemas"""
     return [
         get_ask_user_confirmation_schema(),
         get_display_product_card_schema(),
-        get_display_tool_info_schema()
+        get_display_tool_info_schema(),
+        get_change_background_color_schema()
     ]
