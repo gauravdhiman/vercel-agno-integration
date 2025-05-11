@@ -4,16 +4,13 @@
  */
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import {
+  type DisplayToolInfoParams,
+  formatToolName
+} from '../lib/frontend-tools';
 
-interface ToolInfo {
-  tool_name: string;
-  tool_description: string;
-  tool_parameters?: any;
-  tool_status: 'pending' | 'executing' | 'completed' | 'failed';
-  tool_output?: any;
-  tool_id?: string;
-  tool_error?: string;
-}
+// Alias DisplayToolInfoParams to ToolInfo for backward compatibility
+type ToolInfo = DisplayToolInfoParams;
 
 interface ToolInfoCardProps {
   tool: ToolInfo;
@@ -54,24 +51,6 @@ const ToolInfoCard: React.FC<ToolInfoCardProps> = ({ tool }) => {
 
   // Determine if the card should be expandable
   const isExpandable = hasDetails && !isLoading;
-
-  // Format tool name to be more human-readable
-  const formatToolName = (name: string): string => {
-    if (!name) return '';
-
-    // Replace underscores and hyphens with spaces
-    let formatted = name.replace(/[_-]/g, ' ');
-
-    // Handle camelCase by adding spaces before capital letters
-    formatted = formatted.replace(/([a-z])([A-Z])/g, '$1 $2');
-
-    // Capitalize first letter of each word
-    formatted = formatted.split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
-
-    return formatted;
-  };
 
   // Intelligently format tool output based on its type and content
   const formatToolOutput = (output: any): { type: 'json' | 'markdown' | 'text', content: string } => {

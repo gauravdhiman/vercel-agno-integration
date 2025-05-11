@@ -1,11 +1,9 @@
-import { type ToolInvocation } from '@ai-sdk/ui-utils';
 import React from 'react';
-
-interface ButtonConfig {
-  label: string;
-  value: string | boolean | number;
-  style?: 'primary' | 'secondary' | 'danger';
-}
+import {
+  type ToolInvocation,
+  type AskUserConfirmationParams,
+  getDefaultConfirmationButtons
+} from '../lib/frontend-tools';
 
 interface ConfirmationModalProps {
   toolInvocation: ToolInvocation;
@@ -14,22 +12,14 @@ interface ConfirmationModalProps {
 }
 
 export function ConfirmationModal({ toolInvocation, onConfirm, onCancel }: ConfirmationModalProps) {
-  const args = toolInvocation.args as {
-    title?: string;
-    question_text?: string;
-    confirmation_context?: string;
-    buttons?: ButtonConfig[];
-  };
+  const args = toolInvocation.args as AskUserConfirmationParams;
 
   const title = args?.title || "Please confirm";
   const question = args?.question_text || "Are you sure?";
   const confirmation_context = args?.confirmation_context || "";
 
   // Default buttons if none provided
-  const buttons = args?.buttons || [
-    { label: "Confirm", value: true, style: "primary" },
-    { label: "Cancel", value: false, style: "secondary" }
-  ];
+  const buttons = args?.buttons || getDefaultConfirmationButtons();
 
   // Handle button click
   const handleButtonClick = (value: string | boolean | number) => {

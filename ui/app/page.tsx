@@ -1,11 +1,11 @@
 'use client';
 
 import { useChat, type Message } from '@ai-sdk/react';
-import { type ToolInvocation } from '@ai-sdk/ui-utils';
 import React, { useRef, useEffect, useState } from 'react';
 import { ChatMessage } from './components/ChatMessage';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { InputArea } from './components/InputArea';
+import { FrontendToolName } from './lib/frontend-tools';
 
 // --- Main Chat Component ---
 export default function Page() {
@@ -21,7 +21,6 @@ export default function Page() {
       setError(error);
     }
   });
-  console.log('messages', messages);
 
   const lastMessage = messages[messages.length - 1];
   const lastAssistantMessage = (lastMessage?.role === 'assistant') ? lastMessage : undefined;
@@ -116,10 +115,10 @@ export default function Page() {
 
           {/* Pending Tool Invocations */}
           {pendingToolInvocations.map((invocation, index) => {
-            if (invocation && invocation.toolName === 'ask_user_confirmation') {
+            if (invocation && invocation.toolName === FrontendToolName.ASK_USER_CONFIRMATION) {
               return <ConfirmationModal
                 key={invocation.toolCallId}
-                toolInvocation={invocation as ToolInvocation}
+                toolInvocation={invocation}
                 onConfirm={handleConfirm}
                 onCancel={handleCancel}
               />

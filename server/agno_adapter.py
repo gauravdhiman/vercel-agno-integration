@@ -15,6 +15,13 @@ from agno.run.response import RunEvent, RunResponse
 from agno.tools.function import Function
 from agno.utils.log import log_debug, log_error, log_info, logger # Use the configured logger
 
+# --- Frontend Tool Imports ---
+import sys
+import os
+# Add the project root to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from common.frontend_tools import FrontendToolName
+
 # --- Vercel AI SDK Data Stream Protocol Type IDs ---
 TEXT_PART = "0"
 DATA_PART = "2"
@@ -43,7 +50,7 @@ class AgnoVercelAdapter:
     PROXY_TOOL_NAME = "call_frontend_action"
     # This is used when a BACKEND tool call needs to be displayed/handled on the frontend.
     # It's different from the agent requesting a specific frontend UI action.
-    BACKEND_TOOL_DISPLAY_NAME = "display_tool_info"
+    BACKEND_TOOL_DISPLAY_NAME = FrontendToolName.DISPLAY_TOOL_INFO.value
 
     def __init__(self,
                  agent: Agent,

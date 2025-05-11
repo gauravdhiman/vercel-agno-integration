@@ -2,6 +2,10 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { type Message } from '@ai-sdk/react';
 import ToolInfoCard from './ToolInfoCard';
+import {
+  type ToolInvocation as FrontendToolInvocation,
+  FrontendToolName
+} from '../lib/frontend-tools';
 
 // Define interfaces for message parts
 interface TextPart {
@@ -11,14 +15,7 @@ interface TextPart {
 
 interface ToolInvocationPart {
   type: 'tool-invocation';
-  toolInvocation: {
-    toolCallId: string;
-    toolName: string;
-    state: string;
-    step?: number;
-    args?: any;
-    result?: any;
-  };
+  toolInvocation: FrontendToolInvocation;
 }
 
 type MessagePart = TextPart | ToolInvocationPart;
@@ -109,7 +106,7 @@ export function ChatMessage({ message }: { message: Message }) {
         }
 
         // Tool invocation part - display_tool_info
-        if (isToolInvocationPart(part) && part.toolInvocation.toolName === 'display_tool_info') {
+        if (isToolInvocationPart(part) && part.toolInvocation.toolName === FrontendToolName.DISPLAY_TOOL_INFO) {
           const toolInfo = createToolInfoCard(part.toolInvocation);
           return (
             <div key={`tool-${part.toolInvocation.toolCallId}`} className="mt-2">
