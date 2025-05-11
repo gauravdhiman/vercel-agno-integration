@@ -5,7 +5,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { ChatMessage } from './components/ChatMessage';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { InputArea } from './components/InputArea';
-import { FrontendToolName } from './lib/frontend-tools';
+import { FrontendToolName, ChangeBackgroundColorParams } from './lib/frontend-tools';
 
 // --- Main Chat Component ---
 export default function Page() {
@@ -13,12 +13,34 @@ export default function Page() {
 
   const [error, setError] = useState<Error | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [backgroundColor, setBackgroundColor] = useState<string | null>(null);
 
   const { messages, input, handleInputChange, handleSubmit, addToolResult, status } = useChat({
     api: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1/agent/run',
     onError: (error) => {
       console.error("Chat error:", error);
       setError(error);
+    },
+    onToolCall: ({ toolCall }) => {
+      // Handle the change_background_color tool
+      if (toolCall.toolName === FrontendToolName.CHANGE_BACKGROUND_COLOR) {
+        const args = toolCall.args as ChangeBackgroundColorParams;
+        const colorHexCode = args.colorHexCode;
+
+        // Validate hex color code format
+        if (/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(colorHexCode)) {
+          // Set the background color
+          setBackgroundColor(colorHexCode);
+          // Return success result
+          return { success: true, color: colorHexCode };
+        } else {
+          // Return error for invalid color format
+          return {
+            success: false,
+            error: "Invalid color format. Expected hex color code like #FFC0CB"
+          };
+        }
+      }
     }
   });
 
@@ -38,6 +60,8 @@ export default function Page() {
     addToolResult({ toolCallId, result: { confirmed: result } });
   };
 
+
+
   const isInputDisabled = status !== 'ready' || pendingToolInvocations.length > 0;
 
   // Focus input when ready
@@ -48,7 +72,9 @@ export default function Page() {
   }, [messages, isInputDisabled]);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div
+      className="flex flex-col h-screen transition-colors duration-300"
+      style={{ backgroundColor: backgroundColor || '#f9fafb' /* bg-gray-50 equivalent */ }}>
       {/* Header */}
       <div className="bg-white shadow-sm py-4 px-6 border-b border-gray-200">
         <div className="flex justify-between items-center">

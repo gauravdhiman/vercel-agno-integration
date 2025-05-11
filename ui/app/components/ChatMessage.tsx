@@ -4,7 +4,8 @@ import { type Message } from '@ai-sdk/react';
 import ToolInfoCard from './ToolInfoCard';
 import {
   type ToolInvocation as FrontendToolInvocation,
-  FrontendToolName
+  FrontendToolName,
+  isChangeBackgroundColor
 } from '../lib/frontend-tools';
 
 // Define interfaces for message parts
@@ -111,6 +112,28 @@ export function ChatMessage({ message }: { message: Message }) {
           return (
             <div key={`tool-${part.toolInvocation.toolCallId}`} className="mt-2">
               <ToolInfoCard tool={toolInfo} />
+            </div>
+          );
+        }
+
+        // Change background color tool result
+        if (isToolInvocationPart(part) && part.toolInvocation.state === 'result' &&
+            isChangeBackgroundColor(part.toolInvocation)) {
+          const result = part.toolInvocation.result;
+          const colorHexCode = result?.color || '';
+
+          return (
+            <div key={`color-tool-${part.toolInvocation.toolCallId}`} className="flex justify-start mb-2">
+              <div className="max-w-[80%] rounded-2xl px-5 py-3 shadow-sm bg-gray-200 text-gray-700">
+                <div className="text-sm flex items-center">
+                  <span className="font-medium mr-2">Background color changed to:</span>
+                  <div
+                    className="w-6 h-6 rounded border border-gray-300 inline-block mr-2"
+                    style={{ backgroundColor: colorHexCode }}
+                  ></div>
+                  <code>{colorHexCode}</code>
+                </div>
+              </div>
             </div>
           );
         }

@@ -1,9 +1,9 @@
 /**
  * Frontend Tools for UI Components
- * 
+ *
  * This file imports the common frontend tool definitions from the common directory
  * and re-exports them for use in the UI components.
- * 
+ *
  * Note: In a real-world scenario, you might want to use a more sophisticated
  * approach to share code between frontend and backend, such as a monorepo setup
  * with a shared package.
@@ -18,6 +18,12 @@ import {
   DisplayToolInfoParams,
   ButtonConfig
 } from '../../../common/frontend_tools';
+
+// Define the ChangeBackgroundColorParams interface
+export interface ChangeBackgroundColorParams {
+  /** The hex code of the color to which the background will be set */
+  colorHexCode: string;
+}
 
 // Re-export the types for use in UI components
 export {
@@ -80,6 +86,15 @@ export function isDisplayToolInfo(
   invocation: ToolInvocation
 ): invocation is ToolInvocation & { args: DisplayToolInfoParams } {
   return isToolOfType<DisplayToolInfoParams>(invocation, FrontendToolName.DISPLAY_TOOL_INFO);
+}
+
+/**
+ * Type guard for change_background_color tool
+ */
+export function isChangeBackgroundColor(
+  invocation: ToolInvocation
+): invocation is ToolInvocation & { args: ChangeBackgroundColorParams } {
+  return isToolOfType<ChangeBackgroundColorParams>(invocation, FrontendToolName.CHANGE_BACKGROUND_COLOR);
 }
 
 /**
