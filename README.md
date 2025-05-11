@@ -296,7 +296,65 @@ The wizard helps prevent common errors by:
 
 ## Deployment
 
-For deployment:
+### Docker Deployment
+
+The application can be deployed using Docker, which simplifies the setup process and ensures consistent environments.
+
+#### Prerequisites
+
+- Docker
+- Docker Compose
+
+#### Running with Docker
+
+1. Use the provided script to build and start the Docker containers:
+
+   ```bash
+   ./docker-start.sh
+   ```
+
+   This script will:
+   - Build the Docker images for both frontend and backend
+   - Start the containers in detached mode
+   - Display URLs for accessing the application
+
+2. Alternatively, you can manually run Docker Compose:
+
+   ```bash
+   # For newer Docker Desktop versions
+   docker compose up --build -d
+
+   # For older Docker installations
+   docker-compose up --build -d
+   ```
+
+3. Access the application:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+
+4. To view logs:
+
+   ```bash
+   # For newer Docker Desktop versions
+   docker compose logs -f
+
+   # For older Docker installations
+   docker-compose logs -f
+   ```
+
+5. To stop the containers:
+
+   ```bash
+   # For newer Docker Desktop versions
+   docker compose down
+
+   # For older Docker installations
+   docker-compose down
+   ```
+
+### Manual Deployment
+
+For manual deployment without Docker:
 
 1. Ensure all dependencies are in `requirements.txt`
 2. Make sure the frontend tools Python file is generated during the build process

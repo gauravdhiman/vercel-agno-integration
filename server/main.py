@@ -39,7 +39,12 @@ adapter = AgnoVercelAdapter(
     frontend_tool_schemas=frontend_tools
 )
 
-# --- API Endpoint ---
+# --- API Endpoints ---
+@app.get("/api/v1/health")
+async def health_check():
+    """Health check endpoint for Docker healthcheck."""
+    return {"status": "ok"}
+
 class ChatRequest(BaseModel):
     messages: List[Dict[str, Any]]
     # Include other fields potentially sent by useChat

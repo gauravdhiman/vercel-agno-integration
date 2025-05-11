@@ -1,0 +1,42 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: agno-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - API_PORT=8000
+      - NODE_ENV=production
+      - DOCKER_CONTAINER=true
+    networks:
+      - agno-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    container_name: agno-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NODE_ENV=production
+    networks:
+      - agno-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  agno-network:
+    driver: bridge

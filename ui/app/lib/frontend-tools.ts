@@ -17,7 +17,7 @@ import {
   DisplayProductCardParams,
   DisplayToolInfoParams,
   ButtonConfig
-} from '../../../common/frontend_tools';
+} from '@common/frontend_tools';
 
 // Define the ChangeBackgroundColorParams interface
 export interface ChangeBackgroundColorParams {
