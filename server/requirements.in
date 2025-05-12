@@ -1,4 +1,5 @@
 agno==1.4.5
+crawl4ai
 fastapi==0.104.1
 google-genai
 googlesearch-python

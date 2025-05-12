@@ -193,186 +193,211 @@ class AgnoVercelAdapter:
         # Use instance variables for tracking tool calls
         # (these are initialized in __init__ and reset in _reset_tool_tracking)
 
-        async for agno_response in agno_response_stream:
-            event = agno_response.event
-            content = agno_response.content
-            tools = agno_response.tools # This will contain the call to PROXY_TOOL_NAME
-            metrics = agno_response.metrics
-            thinking = agno_response.thinking
+        try:
+            async for agno_response in agno_response_stream:
+                event = agno_response.event
+                content = agno_response.content
+                tools = agno_response.tools # This will contain the call to PROXY_TOOL_NAME
+                metrics = agno_response.metrics
+                thinking = agno_response.thinking
 
-            if event == RunEvent.tool_call_started and tools:
-                is_proxy_call_handled = False
-                for tool_call_data in tools: # Agno's tool_call structure
-                    agno_tool_name = tool_call_data.get("tool_name", tool_call_data.get("function", {}).get("name"))
-                    agno_tool_args_raw = tool_call_data.get("tool_args", tool_call_data.get("function", {}).get("arguments"))
-                    agno_tool_call_id = tool_call_data.get("tool_call_id", tool_call_data.get("id"))
+                if event == RunEvent.tool_call_started and tools:
+                    is_proxy_call_handled = False
+                    for tool_call_data in tools: # Agno's tool_call structure
+                        agno_tool_name = tool_call_data.get("tool_name", tool_call_data.get("function", {}).get("name"))
+                        agno_tool_args_raw = tool_call_data.get("tool_args", tool_call_data.get("function", {}).get("arguments"))
+                        agno_tool_call_id = tool_call_data.get("tool_call_id", tool_call_data.get("id"))
 
-                    if agno_tool_name == self.PROXY_TOOL_NAME:
-                        is_proxy_call_handled = True
-                        log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Intercepted proxy tool call ID '{agno_tool_call_id}' to trigger frontend.")
+                        if agno_tool_name == self.PROXY_TOOL_NAME:
+                            is_proxy_call_handled = True
+                            log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Intercepted proxy tool call ID '{agno_tool_call_id}' to trigger frontend.")
 
-                        # Arguments for PROXY_TOOL_NAME were set by the LLM
-                        # These arguments *contain* the actual frontend tool name and its args
-                        proxy_call_args = {}
-                        if isinstance(agno_tool_args_raw, str):
-                            try:
-                                proxy_call_args = json.loads(agno_tool_args_raw)
-                            except json.JSONDecodeError:
-                                log_error(f"[Agno-Vercel Adapter] Failed to parse proxy tool args: {agno_tool_args_raw}")
-                                proxy_call_args = {"error": "Invalid proxy arguments"}
-                        elif isinstance(agno_tool_args_raw, dict):
-                            proxy_call_args = agno_tool_args_raw
+                            # Arguments for PROXY_TOOL_NAME were set by the LLM
+                            # These arguments *contain* the actual frontend tool name and its args
+                            proxy_call_args = {}
+                            if isinstance(agno_tool_args_raw, str):
+                                try:
+                                    proxy_call_args = json.loads(agno_tool_args_raw)
+                                except json.JSONDecodeError:
+                                    log_error(f"[Agno-Vercel Adapter] Failed to parse proxy tool args: {agno_tool_args_raw}")
+                                    proxy_call_args = {"error": "Invalid proxy arguments"}
+                            elif isinstance(agno_tool_args_raw, dict):
+                                proxy_call_args = agno_tool_args_raw
 
-                        frontend_tool_name_to_call = proxy_call_args.get("frontend_tool_name", "unknown_frontend_action")
-                        frontend_tool_args_for_call = proxy_call_args.get("frontend_tool_args", {})
+                            frontend_tool_name_to_call = proxy_call_args.get("frontend_tool_name", "unknown_frontend_action")
+                            frontend_tool_args_for_call = proxy_call_args.get("frontend_tool_args", {})
 
-                        vercel_tool_request = {
-                            "toolCallId": agno_tool_call_id, # Use Agno's ID for the proxy call
-                            "toolName": frontend_tool_name_to_call,
-                            "args": frontend_tool_args_for_call,
+                            vercel_tool_request = {
+                                "toolCallId": agno_tool_call_id, # Use Agno's ID for the proxy call
+                                "toolName": frontend_tool_name_to_call,
+                                "args": frontend_tool_args_for_call,
+                            }
+                            formatted_data = self._format_vercel_data_stream(TOOL_CALL_PART, vercel_tool_request).encode("utf-8")
+                            log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending tool call event: {formatted_data}")
+                            yield formatted_data
+                            log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sleeping for 0.01 seconds before next event...")
+                            await asyncio.sleep(0.01)
+                            # Since this specific tool_call_data was for the proxy, we've handled it.
+                            # If there were other non-proxy tools in the same 'tools' list, they'd be handled by the 'else' below.
+                            break # Processed the proxy tool, move to next agno_response
+
+                    if is_proxy_call_handled:
+                        continue # Move to the next event from Agno stream
+
+                    # If not a proxy call, handle backend tools (if any) as before
+                    # This allows backend tools and frontend proxy tools to coexist
+                    for tool_call_data in tools:
+                        tool_call_id = tool_call_data.get("tool_call_id", tool_call_data.get("id", f"backend_tool_{uuid4()}"))
+
+                        # Skip if we've already processed this tool call start
+                        if tool_call_id in self._processed_tool_call_starts:
+                            log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Skipping already processed tool call start: {tool_call_id}")
+                            continue
+
+                        # Mark this tool call as processed
+                        self._processed_tool_call_starts.add(tool_call_id)
+
+                        args_obj = {}
+                        tool_args_raw = tool_call_data.get("tool_args", tool_call_data.get("function", {}).get("arguments"))
+                        if tool_args_raw:
+                            if isinstance(tool_args_raw, str):
+                                try:
+                                    args_obj = json.loads(tool_args_raw)
+                                except json.JSONDecodeError:
+                                    args_obj = {"raw_args": tool_args_raw}
+                            elif isinstance(tool_args_raw, dict):
+                                args_obj = tool_args_raw
+
+                        vercel_backend_tool_display = {
+                            "toolCallId": tool_call_id,
+                            "toolName": self.BACKEND_TOOL_DISPLAY_NAME, # Generic name for UI to display
+                            "args": { # Frontend receives details about the backend tool
+                                "actual_tool_name": tool_call_data.get("tool_name", tool_call_data.get("function", {}).get("name")),
+                                "actual_tool_args": args_obj
+                            }
                         }
-                        formatted_data = self._format_vercel_data_stream(TOOL_CALL_PART, vercel_tool_request).encode("utf-8")
+                        formatted_data = self._format_vercel_data_stream(TOOL_CALL_PART, vercel_backend_tool_display).encode("utf-8")
                         log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending tool call event: {formatted_data}")
                         yield formatted_data
                         log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sleeping for 0.01 seconds before next event...")
                         await asyncio.sleep(0.01)
-                        # Since this specific tool_call_data was for the proxy, we've handled it.
-                        # If there were other non-proxy tools in the same 'tools' list, they'd be handled by the 'else' below.
-                        break # Processed the proxy tool, move to next agno_response
 
-                if is_proxy_call_handled:
-                    continue # Move to the next event from Agno stream
-
-                # If not a proxy call, handle backend tools (if any) as before
-                # This allows backend tools and frontend proxy tools to coexist
-                for tool_call_data in tools:
-                    tool_call_id = tool_call_data.get("tool_call_id", tool_call_data.get("id", f"backend_tool_{uuid4()}"))
-
-                    # Skip if we've already processed this tool call start
-                    if tool_call_id in self._processed_tool_call_starts:
-                        log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Skipping already processed tool call start: {tool_call_id}")
-                        continue
-
-                    # Mark this tool call as processed
-                    self._processed_tool_call_starts.add(tool_call_id)
-
-                    args_obj = {}
-                    tool_args_raw = tool_call_data.get("tool_args", tool_call_data.get("function", {}).get("arguments"))
-                    if tool_args_raw:
-                        if isinstance(tool_args_raw, str):
-                            try:
-                                args_obj = json.loads(tool_args_raw)
-                            except json.JSONDecodeError:
-                                args_obj = {"raw_args": tool_args_raw}
-                        elif isinstance(tool_args_raw, dict):
-                            args_obj = tool_args_raw
-
-                    vercel_backend_tool_display = {
-                        "toolCallId": tool_call_id,
-                        "toolName": self.BACKEND_TOOL_DISPLAY_NAME, # Generic name for UI to display
-                        "args": { # Frontend receives details about the backend tool
-                            "actual_tool_name": tool_call_data.get("tool_name", tool_call_data.get("function", {}).get("name")),
-                            "actual_tool_args": args_obj
-                        }
-                    }
-                    formatted_data = self._format_vercel_data_stream(TOOL_CALL_PART, vercel_backend_tool_display).encode("utf-8")
-                    log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending tool call event: {formatted_data}")
+                elif event == RunEvent.run_response and content:
+                    # Format and send the text response
+                    formatted_data = self._format_vercel_data_stream(TEXT_PART, content).encode("utf-8")
+                    log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending text response event: {formatted_data}")
                     yield formatted_data
                     log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sleeping for 0.01 seconds before next event...")
                     await asyncio.sleep(0.01)
 
-            elif event == RunEvent.run_response and content:
-                # Format and send the text response
-                formatted_data = self._format_vercel_data_stream(TEXT_PART, content).encode("utf-8")
-                log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending text response event: {formatted_data}")
-                yield formatted_data
-                log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sleeping for 0.01 seconds before next event...")
-                await asyncio.sleep(0.01)
+                # Handle tool call completion events
+                elif event == RunEvent.tool_call_completed and tools:
+                    # Ignore the completion of the proxy tool call itself for Vercel stream
+                    # as the proxy tool's "result" ("Frontend action requested.") is internal to Agno.
+                    if not any(tool_call.get("tool_name") == self.PROXY_TOOL_NAME for tool_call in tools):
+                        # Send tool completion events to the frontend
+                        for tool_call_data in tools:
+                            tool_call_id = tool_call_data.get("tool_call_id", tool_call_data.get("id"))
 
-            # Handle tool call completion events
-            elif event == RunEvent.tool_call_completed and tools:
-                # Ignore the completion of the proxy tool call itself for Vercel stream
-                # as the proxy tool's "result" ("Frontend action requested.") is internal to Agno.
-                if not any(tool_call.get("tool_name") == self.PROXY_TOOL_NAME for tool_call in tools):
-                    # Send tool completion events to the frontend
-                    for tool_call_data in tools:
-                        tool_call_id = tool_call_data.get("tool_call_id", tool_call_data.get("id"))
+                            # Skip if we've already processed this tool call completion
+                            if tool_call_id in self._processed_tool_call_completions:
+                                log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Skipping already processed tool call completion: {tool_call_id}")
+                                continue
 
-                        # Skip if we've already processed this tool call completion
-                        if tool_call_id in self._processed_tool_call_completions:
-                            log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Skipping already processed tool call completion: {tool_call_id}")
-                            continue
+                            print("Tool Details When Completed >>>>>> ", tool_call_data)
+                            tool_result = tool_call_data.get("content")
+                            if not tool_result:
+                                # if there is no content / response from tool, tool is still executing, so dont process.
+                                # In case of parallel tool calling, Agno send the list of all tools whenever any of those tools complete
+                                # so we just need to process the tool call for which we received content, not other as they are still in call.
+                                continue
 
-                        # Mark this tool call completion as processed
-                        self._processed_tool_call_completions.add(tool_call_id)
+                            # Mark this tool call completion as processed
+                            self._processed_tool_call_completions.add(tool_call_id)
 
-                        tool_result = tool_call_data.get("content", tool_call_data.get("output", {}))
+                            # Get the original tool args if available
+                            tool_args = {}
+                            for start_tool in self._processed_tool_call_starts:
+                                if start_tool == tool_call_id:
+                                    # We found the matching start tool call
+                                    tool_args = {
+                                        "actual_tool_name": tool_call_data.get("tool_name", "unknown_tool"),
+                                        "actual_tool_args": tool_call_data.get("tool_args", {}),
+                                        "actual_tool_results": tool_result
+                                    }
+                                    break
 
-                        # Get the original tool args if available
-                        tool_args = {}
-                        for start_tool in self._processed_tool_call_starts:
-                            if start_tool == tool_call_id:
-                                # We found the matching start tool call
-                                tool_args = {
-                                    "actual_tool_name": tool_call_data.get("tool_name", "unknown_tool"),
-                                    "actual_tool_args": tool_call_data.get("tool_args", {})
-                                }
-                                break
+                            # Create a tool call result to send to the frontend
+                            # Use display_tool_info as the tool name to match what was sent in the tool call started event
+                            vercel_tool_result = {
+                                "toolCallId": tool_call_id,
+                                "toolName": self.BACKEND_TOOL_DISPLAY_NAME,  # Use display_tool_info instead of the actual tool name
+                                "args": tool_args,  # Include args as required by Vercel AI SDK
+                                "state": "result",
+                                "result": "Actual tool result is in `args.actual_tool_results`"
+                            }
 
-                        # Create a tool call result to send to the frontend
-                        # Use display_tool_info as the tool name to match what was sent in the tool call started event
-                        vercel_tool_result = {
-                            "toolCallId": tool_call_id,
-                            "toolName": self.BACKEND_TOOL_DISPLAY_NAME,  # Use display_tool_info instead of the actual tool name
-                            "args": tool_args,  # Include args as required by Vercel AI SDK
-                            "state": "result",
-                            "result": tool_result
+                            # Format the tool completion event as a tool call part
+                            formatted_data = self._format_vercel_data_stream(TOOL_CALL_PART, vercel_tool_result).encode("utf-8")
+                            log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending tool completion event: {formatted_data}")
+                            yield formatted_data
+                            log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sleeping for 0.01 seconds before next event...")
+                            await asyncio.sleep(0.01)
+
+                elif event == RunEvent.run_error and content:
+                    formatted_data = self._format_vercel_data_stream(ERROR_PART, str(content)).encode("utf-8")
+                    log_error(f"[Agno-Vercel Adapter][{self.agent.name}]: Error in run: {formatted_data}")
+                    yield formatted_data
+                    log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sleeping for 0.01 seconds before next event...")
+                    await asyncio.sleep(0.01)
+
+                elif event == RunEvent.run_completed:
+                    finish_data: Dict[str, Any] = {"finishReason": "stop"}
+                    if metrics:
+                        finish_data["usage"] = {
+                            "promptTokens": int(metrics.get("input_tokens", metrics.get("prompt_tokens", 0))),
+                            "completionTokens": int(metrics.get("output_tokens", metrics.get("completion_tokens", 0))),
+                            "totalTokens": int(metrics.get("total_tokens", 0)),
                         }
+                        if finish_data["usage"]["totalTokens"] == 0:
+                            finish_data["usage"]["totalTokens"] = finish_data["usage"]["promptTokens"] + finish_data["usage"]["completionTokens"]
+                    formatted_data = self._format_vercel_data_stream(FINISH_MESSAGE_PART, finish_data).encode("utf-8")
+                    log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending finish message: {formatted_data}")
+                    yield formatted_data
+                    log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sleeping for 0.01 seconds before next event...")
+                    await asyncio.sleep(0.01)
 
-                        # Format the tool completion event as a tool call part
-                        formatted_data = self._format_vercel_data_stream(TOOL_CALL_PART, vercel_tool_result).encode("utf-8")
-                        log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending tool completion event: {formatted_data}")
+                elif event == RunEvent.reasoning_step and content: # Example
+                    if isinstance(content, str):
+                        formatted_data = self._format_vercel_data_stream(REASONING_PART, content).encode("utf-8")
+                        log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending reasoning step: {formatted_data}")
                         yield formatted_data
                         log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sleeping for 0.01 seconds before next event...")
                         await asyncio.sleep(0.01)
 
-            elif event == RunEvent.run_error and content:
-                formatted_data = self._format_vercel_data_stream(ERROR_PART, str(content)).encode("utf-8")
-                log_error(f"[Agno-Vercel Adapter][{self.agent.name}]: Error in run: {formatted_data}")
-                yield formatted_data
-                log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sleeping for 0.01 seconds before next event...")
-                await asyncio.sleep(0.01)
-
-            elif event == RunEvent.run_completed:
-                finish_data: Dict[str, Any] = {"finishReason": "stop"}
-                if metrics:
-                    finish_data["usage"] = {
-                        "promptTokens": int(metrics.get("input_tokens", metrics.get("prompt_tokens", 0))),
-                        "completionTokens": int(metrics.get("output_tokens", metrics.get("completion_tokens", 0))),
-                        "totalTokens": int(metrics.get("total_tokens", 0)),
-                    }
-                    if finish_data["usage"]["totalTokens"] == 0:
-                        finish_data["usage"]["totalTokens"] = finish_data["usage"]["promptTokens"] + finish_data["usage"]["completionTokens"]
-                formatted_data = self._format_vercel_data_stream(FINISH_MESSAGE_PART, finish_data).encode("utf-8")
-                log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending finish message: {formatted_data}")
-                yield formatted_data
-                log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sleeping for 0.01 seconds before next event...")
-                await asyncio.sleep(0.01)
-
-            elif event == RunEvent.reasoning_step and content: # Example
-                if isinstance(content, str):
-                    formatted_data = self._format_vercel_data_stream(REASONING_PART, content).encode("utf-8")
-                    log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending reasoning step: {formatted_data}")
+                elif thinking:
+                    formatted_data = self._format_vercel_data_stream(REASONING_PART, thinking).encode("utf-8")
+                    log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending thinking: {formatted_data}")
                     yield formatted_data
                     log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sleeping for 0.01 seconds before next event...")
                     await asyncio.sleep(0.01)
-
-            elif thinking:
-                formatted_data = self._format_vercel_data_stream(REASONING_PART, thinking).encode("utf-8")
-                log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sending thinking: {formatted_data}")
-                yield formatted_data
-                log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Sleeping for 0.01 seconds before next event...")
-                await asyncio.sleep(0.01)
+        except Exception as e:
+            # Handle ModelProviderError and other exceptions
+            import traceback
+            error_message = str(e)
+            error_type = e.__class__.__name__
+            stack_trace = traceback.format_exc()
+            log_error(f"[Agno-Vercel Adapter][{self.agent.name}]: Error in stream: {error_type} - {error_message}\nStack trace:\n{stack_trace}")
+            
+            # Send a user-friendly message first
+            user_message = "I encountered an issue processing your request. Please feel free to continue our conversation or try rephrasing your question."
+            formatted_message = self._format_vercel_data_stream(TEXT_PART, user_message).encode("utf-8")
+            yield formatted_message
+                        
+            # Send a finish message to properly close the stream
+            finish_data = {"finishReason": "stop"}
+            formatted_finish = self._format_vercel_data_stream(FINISH_MESSAGE_PART, finish_data).encode("utf-8")
+            yield formatted_finish
 
             # ... map other events as needed ...
 
@@ -402,6 +427,9 @@ class AgnoVercelAdapter:
                         tool_id = tool_invocation.get('toolCallId')
                         tool_name = tool_invocation.get('toolName')
                         tool_result = tool_invocation.get("result", {})
+                        if tool_name == self.BACKEND_TOOL_DISPLAY_NAME:
+                            # we dont want to show agent the response from BACKEND_TOOL_DISPLAY_NAME, as that is irrelevant (being internal tool) and should be transparent to agent.
+                            continue
                         tool_result_message = AgnoMessage(
                             role="user",
                             content=f"I am providing you the result of frontend tools:\nTool '{tool_name}' with id '{tool_id}' returned: '{json.dumps(tool_result)}'",

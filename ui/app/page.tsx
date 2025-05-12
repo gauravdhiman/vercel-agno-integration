@@ -5,7 +5,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { ChatMessage } from './components/ChatMessage';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { InputArea } from './components/InputArea';
-import { FrontendToolName, ChangeBackgroundColorParams } from './lib/frontend-tools';
+import { FrontendToolName, ChangeBackgroundColorParams, DisplayProductCardParams, DisplayToolInfoParams } from './lib/frontend-tools';
+import { validateImageUrl } from './lib/image-utils';
 
 // --- Main Chat Component ---
 export default function Page() {
@@ -15,13 +16,15 @@ export default function Page() {
   const [showDebug, setShowDebug] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState<string | null>(null);
 
-  const { messages, input, handleInputChange, handleSubmit, addToolResult, status } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, addToolResult, status, reload } = useChat({
     api: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1/agent/run',
     onError: (error) => {
       console.error("Chat error:", error);
       setError(error);
+      // Clear error after 5 seconds
+      setTimeout(() => setError(null), 5000);
     },
-    onToolCall: ({ toolCall }) => {
+    onToolCall: async ({ toolCall }) => {
       // Handle the change_background_color tool
       if (toolCall.toolName === FrontendToolName.CHANGE_BACKGROUND_COLOR) {
         const args = toolCall.args as ChangeBackgroundColorParams;
@@ -38,6 +41,52 @@ export default function Page() {
           return {
             success: false,
             error: "Invalid color format. Expected hex color code like #FFC0CB"
+          };
+        }
+      }
+
+      // Handle the display_product_card tool
+      if (toolCall.toolName === FrontendToolName.DISPLAY_PRODUCT_CARD) {
+        try {
+          const args = toolCall.args as DisplayProductCardParams;
+          // Validate required fields
+          const { product_id, product_name, price } = args;
+          if (!product_id || !product_name || typeof price !== 'number') {
+            return {
+              success: false,
+              error: "Missing required fields: product_id, product_name, and price are required"
+            };
+          }
+
+          // Validate price is positive
+          if (price < 0) {
+            return {
+              success: false,
+              error: "Price must be a positive number"
+            };
+          }
+
+          // Validate image URL if provided
+          if (args.image_url) {
+            const imageValidation = await validateImageUrl(args.image_url);
+            if (!imageValidation.isValid || !imageValidation.isLoadable) {
+              return {
+                success: false,
+                error: imageValidation.error || "Invalid or unloadable image URL"
+              };
+            }
+          }
+
+          // If all validations pass, return success
+          return {
+            success: true,
+            message: "Product card rendered successfully for ", product_name,
+            product_id: product_id
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: `Error rendering product card: ${error instanceof Error ? error.message : 'Unknown error'}`
           };
         }
       }
@@ -59,8 +108,6 @@ export default function Page() {
   const handleCancel = (toolCallId: string, result: any) => {
     addToolResult({ toolCallId, result: { confirmed: result } });
   };
-
-
 
   const isInputDisabled = status !== 'ready' || pendingToolInvocations.length > 0;
 
@@ -108,6 +155,15 @@ export default function Page() {
               <pre className="mt-2 text-xs overflow-auto bg-red-50 p-2 rounded">
                 {JSON.stringify(error, null, 2)}
               </pre>
+              <button
+                onClick={() => {
+                  setError(null);
+                  reload();
+                }}
+                className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+              >
+                Retry
+              </button>
             </div>
           )}
 
@@ -136,8 +192,6 @@ export default function Page() {
           {messages.map((m: Message) => (
             <ChatMessage key={m.id} message={m} />
           ))}
-
-
 
           {/* Pending Tool Invocations */}
           {pendingToolInvocations.map((invocation, index) => {

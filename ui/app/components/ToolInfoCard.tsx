@@ -25,7 +25,7 @@ const ToolInfoCard: React.FC<ToolInfoCardProps> = ({ tool }) => {
   const actualToolArgs = tool.tool_parameters?.actual_tool_args;
 
   // For the result, check if it's in the expected format
-  const actualToolResult = tool.tool_output;
+  const actualToolResult = tool.tool_parameters?.actual_tool_results;
 
   // Determine if the tool has details to show
   const hasDetails = tool.tool_parameters || tool.tool_output || tool.tool_error;

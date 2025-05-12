@@ -25,7 +25,7 @@ def get_ask_user_confirmation_schema() -> Dict[str, Any]:
     """Generate schema for the ask_user_confirmation tool"""
     return {
         "name": FrontendToolName.ASK_USER_CONFIRMATION,
-        "description": "Asks the user for confirmation on a specific question. The UI will show a modal with customizable buttons.",
+        "description": "Use this tool for questions, confirmation or approval kind of interaction with user in UI. The UI will shows a modal with customizable buttons for user to select. If asking question, always have 'Others' option in addition to applicable ones.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -73,7 +73,7 @@ def get_display_product_card_schema() -> Dict[str, Any]:
     """Generate schema for the display_product_card tool"""
     return {
         "name": FrontendToolName.DISPLAY_PRODUCT_CARD,
-        "description": "Shows a product card in the UI with details about a specific product.",
+        "description": "Use this tool to show the product details in UI whenever user is asking about any product or want to see product details.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -82,51 +82,10 @@ def get_display_product_card_schema() -> Dict[str, Any]:
                 "price": {"type": "number", "description": "Price of the product."},
                 "image_url": {"type": "string", "format": "uri", "description": "URL of the product image."}
             },
-            "required": ["product_id", "product_name", "price"]
+            "required": ["product_name", "price"]
         }
     }
 
-def get_display_tool_info_schema() -> Dict[str, Any]:
-    """Generate schema for the display_tool_info tool"""
-    return {
-        "name": FrontendToolName.DISPLAY_TOOL_INFO,
-        "description": "Displays detailed information about a tool in the UI including execution status and results. Shows a spinner for in-progress tools and allows expanding completed tools to view details.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "tool_name": {
-                    "type": "string",
-                    "description": "The name of the tool to display."
-                },
-                "tool_description": {
-                    "type": "string",
-                    "description": "Detailed description of the tool\'s functionality."
-                },
-                "tool_id": {
-                    "type": "string",
-                    "description": "Optional unique identifier for the tool call."
-                },
-                "tool_parameters": {
-                    "type": "object",
-                    "description": "Parameters passed to the tool."
-                },
-                "tool_status": {
-                    "type": "string",
-                    "enum": ["pending", "executing", "completed", "failed"],
-                    "description": "Current execution status of the tool. \'pending\' shows a spinner with gray badge, \'executing\' shows a spinner with blue badge, \'completed\' shows a green badge, \'failed\' shows a red badge."
-                },
-                "tool_output": {
-                    "type": "object",
-                    "description": "Output or results from the tool execution. Only shown when the user expands the card."
-                },
-                "tool_error": {
-                    "type": "string",
-                    "description": "Error message if the tool execution failed. Only shown when the user expands the card."
-                }
-            },
-            "required": ["tool_name", "tool_description", "tool_status"]
-        }
-    }
 
 def get_change_background_color_schema() -> Dict[str, Any]:
     """Generate schema for the change_background_color tool"""
@@ -150,6 +109,5 @@ def get_all_frontend_tool_schemas() -> List[Dict[str, Any]]:
     return [
         get_ask_user_confirmation_schema(),
         get_display_product_card_schema(),
-        get_display_tool_info_schema(),
         get_change_background_color_schema()
     ]

@@ -55,11 +55,6 @@ class ChatRequest(BaseModel):
 @app.post("/api/v1/agent/run")
 async def handle_chat(request: ChatRequest):
     """Handles chat requests from the Vercel AI SDK UI."""
-    print(f"Received chat request: {request}")  # Debug logging
-    # last_message = request.messages[-1] if request.messages else None
-    # user_input = last_message.get("content", "") if last_message else ""
-    # print(f"Processing message: {user_input}")  # Debug logging
-
     # Extract session_id and user_id (example: sent via custom data or specific field)
     session_id = request.sessionId or request.data.get("sessionId") if request.data else None
     user_id = request.userId or request.data.get("userId") if request.data else None

@@ -63,10 +63,13 @@ export interface AskUserConfirmationParams {
  */
 export interface DisplayProductCardParams {
   /** The unique ID of the product */
-  product_id: string;
+  product_id?: string;
 
   /** Name of the product */
   product_name: string;
+
+  /** Description of the product */
+  product_description: string;
 
   /** Price of the product */
   price: number;
@@ -168,7 +171,7 @@ export interface FrontendToolSchema {
 function getAskUserConfirmationSchema(): FrontendToolSchema {
   return {
     name: FrontendToolName.ASK_USER_CONFIRMATION,
-    description: "Asks the user for confirmation on a specific question. The UI will show a modal with customizable buttons.",
+    description: "Use this tool for questions, confirmation or approval kind of interaction with user in UI. The UI will shows a modal with customizable buttons for user to select. If asking question, always have 'Others' option in addition to applicable ones.",
     parameters: {
       type: "object",
       properties: {
@@ -219,7 +222,7 @@ function getAskUserConfirmationSchema(): FrontendToolSchema {
 function getDisplayProductCardSchema(): FrontendToolSchema {
   return {
     name: FrontendToolName.DISPLAY_PRODUCT_CARD,
-    description: "Shows a product card in the UI with details about a specific product.",
+    description: "Use this tool to show the product details in UI whenever user is asking about any product or want to see product details.",
     parameters: {
       type: "object",
       properties: {
@@ -231,6 +234,10 @@ function getDisplayProductCardSchema(): FrontendToolSchema {
           type: "string",
           description: "Name of the product."
         },
+        product_description: {
+          type: "string",
+          description: "Description of the product."
+        },
         price: {
           type: "number",
           description: "Price of the product."
@@ -241,7 +248,7 @@ function getDisplayProductCardSchema(): FrontendToolSchema {
           description: "URL of the product image."
         }
       },
-      required: ["product_id", "product_name", "price"]
+      required: ["product_name", "price"]
     }
   };
 }
@@ -252,7 +259,7 @@ function getDisplayProductCardSchema(): FrontendToolSchema {
 function getDisplayToolInfoSchema(): FrontendToolSchema {
   return {
     name: FrontendToolName.DISPLAY_TOOL_INFO,
-    description: "Displays detailed information about a tool in the UI including execution status and results. Shows a spinner for in-progress tools and allows expanding completed tools to view details.",
+    description: "Displays detailed information about backend tool calls in the UI, including execution status and results. Shows a spinner for in-progress tools and allows expanding completed tools to view details.",
     parameters: {
       type: "object",
       properties: {

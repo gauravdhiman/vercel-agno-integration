@@ -5,8 +5,10 @@ import ToolInfoCard from './ToolInfoCard';
 import {
   type ToolInvocation as FrontendToolInvocation,
   FrontendToolName,
-  isChangeBackgroundColor
+  isChangeBackgroundColor,
+  type DisplayProductCardParams
 } from '../lib/frontend-tools';
+import ProductCard from './ProductCard';
 
 // Define interfaces for message parts
 interface TextPart {
@@ -112,6 +114,16 @@ export function ChatMessage({ message }: { message: Message }) {
           return (
             <div key={`tool-${part.toolInvocation.toolCallId}`} className="mt-2">
               <ToolInfoCard tool={toolInfo} />
+            </div>
+          );
+        }
+
+        // Tool invocation part - display_product_card
+        if (isToolInvocationPart(part) && part.toolInvocation.toolName === FrontendToolName.DISPLAY_PRODUCT_CARD) {
+          const productData = part.toolInvocation.args as DisplayProductCardParams;
+          return (
+            <div key={`product-${part.toolInvocation.toolCallId}`} className="mt-2">
+              <ProductCard product={productData} />
             </div>
           );
         }
