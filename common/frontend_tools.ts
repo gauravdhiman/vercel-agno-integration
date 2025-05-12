@@ -14,7 +14,7 @@
  * Enum for all available frontend tool names
  */
 export enum FrontendToolName {
-  ASK_USER_CONFIRMATION = "ask_user_confirmation",
+  ASK_USER_QUESTION_CONFIRMATION_APPROVAL_INPUT = "ask_user_question_confirmation_approval_input",
   DISPLAY_PRODUCT_CARD = "display_product_card",
   DISPLAY_TOOL_INFO = "display_tool_info",
   CHANGE_BACKGROUND_COLOR = "change_background_color"
@@ -39,7 +39,7 @@ export interface ButtonConfig {
 }
 
 /**
- * Parameters for the ask_user_confirmation tool
+ * Parameters for the ask_user_question_confirmation_approval_input tool
  */
 export interface AskUserConfirmationParams {
   /** Title / header of the confirmation modal */
@@ -166,11 +166,11 @@ export interface FrontendToolSchema {
 }
 
 /**
- * Generate JSON Schema for the ask_user_confirmation tool
+ * Generate JSON Schema for the ask_user_question_confirmation_approval_input tool
  */
 function getAskUserConfirmationSchema(): FrontendToolSchema {
   return {
-    name: FrontendToolName.ASK_USER_CONFIRMATION,
+    name: FrontendToolName.ASK_USER_QUESTION_CONFIRMATION_APPROVAL_INPUT,
     description: "Use this tool for questions, confirmation or approval kind of interaction with user in UI. The UI will shows a modal with customizable buttons for user to select. If asking question, always have 'Others' option in addition to applicable ones.",
     parameters: {
       type: "object",

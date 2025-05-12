@@ -103,7 +103,7 @@ class FrontendToolName(str, Enum):
         let parameters = null;
 
         // Define parameters for each tool
-        if (enumMatch && enumMatch[1] === 'ASK_USER_CONFIRMATION') {
+        if (enumMatch && enumMatch[1] === 'ASK_USER_QUESTION_CONFIRMATION_APPROVAL_INPUT') {
           parameters = `{
             "type": "object",
             "properties": {
@@ -226,7 +226,7 @@ class FrontendToolName(str, Enum):
   // Generate Python schema functions
   for (const func of schemaFunctions) {
     // Extract the tool name from the function name
-    // For example, from "getAskUserConfirmationSchema" to "ask_user_confirmation"
+    // For example, from "getAskUserQuestionConfirmationApprovalInputSchema" to "ask_user_question_confirmation_approval_input"
     let snakeName;
     if (func.funcName.endsWith('Schema')) {
       // Regular case: getXxxSchema -> xxx

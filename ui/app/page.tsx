@@ -16,7 +16,10 @@ export default function Page() {
   const [showDebug, setShowDebug] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState<string | null>(null);
 
-  const { messages, input, handleInputChange, handleSubmit, addToolResult, status, reload } = useChat({
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+const [isAtBottom, setIsAtBottom] = useState(true);
+
+const { messages, input, handleInputChange, handleSubmit, addToolResult, status, reload } = useChat({
     api: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1/agent/run',
     onError: (error) => {
       console.error("Chat error:", error);
@@ -111,6 +114,21 @@ export default function Page() {
 
   const isInputDisabled = status !== 'ready' || pendingToolInvocations.length > 0;
 
+  // Track scroll position
+  const handleScroll = () => {
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+      setIsAtBottom(scrollHeight - scrollTop <= clientHeight + 10);
+    }
+  };
+
+  // Auto-scroll to bottom when new messages arrive and we're at bottom
+  useEffect(() => {
+    if (isAtBottom && chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [messages, isAtBottom]);
+
   // Focus input when ready
   useEffect(() => {
     if (inputRef.current && !isInputDisabled) {
@@ -145,7 +163,11 @@ export default function Page() {
       </div>
 
       {/* Chat Container */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      <div 
+  ref={chatContainerRef}
+  className="flex-1 overflow-y-auto px-4 py-6"
+  onScroll={handleScroll}
+>
         <div className="max-w-3xl mx-auto space-y-4">
           {/* Error Display */}
           {error && (
@@ -195,7 +217,7 @@ export default function Page() {
 
           {/* Pending Tool Invocations */}
           {pendingToolInvocations.map((invocation, index) => {
-            if (invocation && invocation.toolName === FrontendToolName.ASK_USER_CONFIRMATION) {
+            if (invocation && invocation.toolName === FrontendToolName.ASK_USER_QUESTION_CONFIRMATION_APPROVAL_INPUT) {
               return <ConfirmationModal
                 key={invocation.toolCallId}
                 toolInvocation={invocation}

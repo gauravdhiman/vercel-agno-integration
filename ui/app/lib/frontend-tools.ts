@@ -62,12 +62,12 @@ export function isToolOfType<T>(
 }
 
 /**
- * Type guard for ask_user_confirmation tool
+ * Type guard for ask_user_question_confirmation_approval_input tool
  */
 export function isAskUserConfirmation(
   invocation: ToolInvocation
 ): invocation is ToolInvocation & { args: AskUserConfirmationParams } {
-  return isToolOfType<AskUserConfirmationParams>(invocation, FrontendToolName.ASK_USER_CONFIRMATION);
+  return isToolOfType<AskUserConfirmationParams>(invocation, FrontendToolName.ASK_USER_QUESTION_CONFIRMATION_APPROVAL_INPUT);
 }
 
 /**

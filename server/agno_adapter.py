@@ -159,7 +159,7 @@ class AgnoVercelAdapter:
                 "properties": {
                     "frontend_tool_name": {
                         "type": "string",
-                        "description": "The specific name of the action the frontend application should perform (e.g., 'ask_user_confirmation', 'display_product_card'). Refer to agent instructions for available frontend_tool_names and their argument schemas."
+                        "description": "The specific name of the action the frontend application should perform (e.g., 'ask_user_question_confirmation_approval_input', 'display_product_card' etc). Refer to agent instructions for available frontend_tool_names and their argument schemas."
                     },
                     "frontend_tool_args": {
                         "type": "object",
