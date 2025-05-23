@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  agno_browser_sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: agno-browser-sandbox:latest # Local image name
+    container_name: agno_browser_sandbox_container # Specific container name
+    ports:
+      # API for AgnoBrowserToolkit (host:container)
+      - "8004:8003"  # AgnoBrowserToolkit default host_port maps to browser_api.py port
+      # VNC Web Access (noVNC)
+      - "8005:6080"
+      # Raw VNC Access
+      - "8006:5901"
+      # Static file server for /workspace
+      - "8007:8080"
+      # Chrome DevTools Protocol (optional, for debugging)
+      - "9222:9222"
+    environment:
+      # Consistent with Suna's supervisord.conf and Dockerfile defaults
+      - VNC_PASSWORD=${VNC_PASSWORD:-agnopass} # Default VNC password for Agno
+      - RESOLUTION=${RESOLUTION:-1024x768x24}
+      - RESOLUTION_WIDTH=${RESOLUTION_WIDTH:-1024}
+      - RESOLUTION_HEIGHT=${RESOLUTION_HEIGHT:-768}
+      - CHROME_PERSISTENT_SESSION=${CHROME_PERSISTENT_SESSION:-true}
+      - ANONYMIZED_TELEMETRY=false # As set in Suna's Dockerfile
+      # Ensure CHROME_DEBUGGING_PORT is set if browser_api.py relies on it (Suna's does)
+      - CHROME_DEBUGGING_PORT=9222
+    volumes:
+      # Mount a local directory to /workspace inside the container for persistence/interaction
+      # Replace ./local_workspace with the desired host path or remove for an anonymous volume
+      - ./workspace:/workspace 
+      # For X11 forwarding if running Xvfb on host, usually not needed with Dockerized Xvfb
+      # - /tmp/.X11-unix:/tmp/.X11-unix 
+    restart: unless-stopped
+    shm_size: '2gb' # Recommended for browsers
+    cap_add:
+      - SYS_ADMIN # Often needed for full browser functionality and debugging tools
+    security_opt:
+      - seccomp:unconfined # May be needed for certain Chrome/Playwright features
+    tmpfs:
+      - /tmp # For temporary files within the container
+    # healthcheck:
+    #   test: ["CMD", "nc", "-z", "localhost", "5901"] # VNC server check
+    #   interval: 15s
+    #   timeout: 5s
+    #   retries: 5
+    #   start_period: 30s # Give more time for supervisord services to start
+
+# volumes:
+#   workspace: # Defines a named volume if you remove the bind mount above

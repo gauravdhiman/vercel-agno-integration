@@ -12,7 +12,7 @@ from typing import Dict, List, Any, Optional, Union
 
 class FrontendToolName(str, Enum):
     """Enum for all available frontend tool names"""
-    ASK_USER_QUESTION_CONFIRMATION_APPROVAL_INPUT = "ask_user_question_confirmation_approval_input"
+    ASK_USER_CONFIRMATION = "ask_user_confirmation"
     DISPLAY_PRODUCT_CARD = "display_product_card"
     DISPLAY_TOOL_INFO = "display_tool_info"
     CHANGE_BACKGROUND_COLOR = "change_background_color"
@@ -21,10 +21,10 @@ class FrontendToolName(str, Enum):
 # Schema Definitions
 # -----------------------------------------------------------------------------
 
-def get_ask_user_question_confirmation_approval_input_schema() -> Dict[str, Any]:
-    """Generate schema for the ask_user_question_confirmation_approval_input tool"""
+def get_ask_user_confirmation_schema() -> Dict[str, Any]:
+    """Generate schema for the ask_user_confirmation tool"""
     return {
-        "name": FrontendToolName.ASK_USER_QUESTION_CONFIRMATION_APPROVAL_INPUT,
+        "name": FrontendToolName.ASK_USER_CONFIRMATION,
         "description": "Use this tool for questions, confirmation or approval kind of interaction with user in UI. The UI will shows a modal with customizable buttons for user to select. If asking question, always have 'Others' option in addition to applicable ones.",
         "parameters": {
             "type": "object",
@@ -148,7 +148,7 @@ def get_change_background_color_schema() -> Dict[str, Any]:
 def get_all_frontend_tool_schemas() -> List[Dict[str, Any]]:
     """Get all frontend tool schemas"""
     return [
-        get_ask_user_question_confirmation_approval_input_schema(),
+        get_ask_user_confirmation_schema(),
         get_display_product_card_schema(),
         get_display_tool_info_schema(),
         get_change_background_color_schema()

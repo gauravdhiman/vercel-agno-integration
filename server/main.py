@@ -15,7 +15,8 @@ from agno.agent import Agent
 from agno.team import Team
 from agno.models.google import Gemini
 
-from agent import create_agent
+# from agent import create_agent
+from job_agent import create_agent
 from frontend_tool_schemas import frontend_tools
 
 # --- FastAPI Setup ---

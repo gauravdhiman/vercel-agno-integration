@@ -20,6 +20,6 @@ frontend_tools = [
 ]
 
 # Constants for easy reference in other parts of the backend code
-ASK_USER_QUESTION_CONFIRMATION_APPROVAL_INPUT = FrontendToolName.ASK_USER_QUESTION_CONFIRMATION_APPROVAL_INPUT.value
+ASK_USER_CONFIRMATION = FrontendToolName.ASK_USER_CONFIRMATION.value
 DISPLAY_PRODUCT_CARD = FrontendToolName.DISPLAY_PRODUCT_CARD.value
 DISPLAY_TOOL_INFO = FrontendToolName.DISPLAY_TOOL_INFO.value

@@ -1,0 +1,8 @@
+fastapi==0.110.0
+uvicorn[standard]==0.27.1
+# pyautogui can be removed if only playwright is used for UI interaction
+pyautogui==0.9.54
+# pillow is good for image processing, e.g. with screenshots
+pillow
+pydantic # For data models in FastAPI
+pytesseract # For OCR

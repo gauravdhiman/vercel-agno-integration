@@ -7,13 +7,14 @@ import { ConfirmationModal } from './components/ConfirmationModal';
 import { InputArea } from './components/InputArea';
 import { FrontendToolName, ChangeBackgroundColorParams, DisplayProductCardParams, DisplayToolInfoParams } from './lib/frontend-tools';
 import { validateImageUrl } from './lib/image-utils';
-
+import DockerVNCViewer from './components/DockerVNCViewer';
 // --- Main Chat Component ---
 export default function Page() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [error, setError] = useState<Error | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [showDocker, setShowDocker] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState<string | null>(null);
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -28,6 +29,10 @@ const { messages, input, handleInputChange, handleSubmit, addToolResult, status,
       setTimeout(() => setError(null), 5000);
     },
     onToolCall: async ({ toolCall }) => {
+      console.log('Tool name: ', toolCall)
+      // Check if tool name includes 'browser_' and show Docker browser
+      setShowDocker(toolCall?.args?.actual_tool_name?.toLocaleLowerCase().includes('browser'));
+
       // Handle the change_background_color tool
       if (toolCall.toolName === FrontendToolName.CHANGE_BACKGROUND_COLOR) {
         const args = toolCall.args as ChangeBackgroundColorParams;
@@ -138,8 +143,9 @@ const { messages, input, handleInputChange, handleSubmit, addToolResult, status,
 
   return (
     <div
-      className="flex flex-col h-screen transition-colors duration-300"
+      className="flex h-screen transition-colors duration-300"
       style={{ backgroundColor: backgroundColor || '#f9fafb' /* bg-gray-50 equivalent */ }}>
+      <div className="flex flex-col" style={{ width: showDocker ? '50%' : '100%' }}>
       {/* Header */}
       <div className="bg-white shadow-sm py-4 px-6 border-b border-gray-200">
         <div className="flex justify-between items-center">
@@ -158,16 +164,22 @@ const { messages, input, handleInputChange, handleSubmit, addToolResult, status,
             >
               {showDebug ? 'Hide Debug' : 'Show Debug'}
             </button>
+            <button
+              onClick={() => setShowDocker(!showDocker)}
+              className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded-full"
+            >
+              {showDocker ? 'Hide Docker' : 'Show Docker'}
+            </button>
           </div>
         </div>
       </div>
 
       {/* Chat Container */}
       <div 
-  ref={chatContainerRef}
-  className="flex-1 overflow-y-auto px-4 py-6"
-  onScroll={handleScroll}
->
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto px-4 py-6"
+        onScroll={handleScroll}
+      >
         <div className="max-w-3xl mx-auto space-y-4">
           {/* Error Display */}
           {error && (
@@ -217,7 +229,7 @@ const { messages, input, handleInputChange, handleSubmit, addToolResult, status,
 
           {/* Pending Tool Invocations */}
           {pendingToolInvocations.map((invocation, index) => {
-            if (invocation && invocation.toolName === FrontendToolName.ASK_USER_QUESTION_CONFIRMATION_APPROVAL_INPUT) {
+            if (invocation && invocation.toolName === FrontendToolName.ASK_USER_CONFIRMATION) {
               return <ConfirmationModal
                 key={invocation.toolCallId}
                 toolInvocation={invocation}
@@ -239,6 +251,21 @@ const { messages, input, handleInputChange, handleSubmit, addToolResult, status,
         isInputDisabled={isInputDisabled}
         status={status}
       />
+      </div>
+      {showDocker && (
+        <div 
+          // className="border-l border-gray-200 bg-white"
+          style={{ width: '75%' }}
+        >
+            <DockerVNCViewer
+              noVncBaseUrl={process.env.NEXT_PUBLIC_NOVNC_BASE_URL || 'http://localhost:6080'}
+              vncPassword={process.env.NEXT_PUBLIC_VNC_PASSWORD || ''}
+              height="100vh"
+              width="100%"
+              showControls={true}
+            />
+        </div>
+      )}
     </div>
   );
 }
