@@ -1,7 +1,9 @@
 # main.py
-from dotenv  import load_dotenv
+from dotenv import load_dotenv
 load_dotenv()
 import os
+from contextlib import asynccontextmanager
+from pathlib import Path # <-- Add this import
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,16 +13,47 @@ from typing import List, Dict, Any, Optional
 
 # --- Adapter and Agno Imports ---
 from agno_adapter import AgnoVercelAdapter
-from agno.agent import Agent
-from agno.team import Team
-from agno.models.google import Gemini
+from agno.tools.mcp import MCPTools # <-- Add this import
 
-# from agent import create_agent
-from job_agent import create_agent
+from agents.generic_agent import create_agent
+# from agents.job_agent import create_agent
+# from agents.travel_agent import create_agent
 from frontend_tool_schemas import frontend_tools
 
+# --- Initialize Agent and Adapter ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup event to run initialization code."""
+    # Define folder_path for MCPTools here
+    # Ensure the 'server/tmp_fs' directory exists relative to where main.py is run,
+    # or use an absolute path.
+    # Assuming main.py is in 'server/' directory:
+    base_dir = Path(__file__).parent.resolve()
+    folder_path = base_dir / "tmp_fs"
+    # Ensure the directory exists, create if not (optional, good practice)
+    folder_path.mkdir(parents=True, exist_ok=True)
+    print(f"MCPTools filesystem path: {folder_path}")
+
+    async with MCPTools(
+        f"npx -y @modelcontextprotocol/server-filesystem {str(folder_path)}"
+    ) as mcp_tools_instance: # Renamed for clarity
+        print("MCPTools initialized.")
+        my_actual_agent = create_agent(mcp_tools_instance) # Pass mcp_tools_instance
+        print("Agent created.")
+
+        adapter = AgnoVercelAdapter(
+            agent=my_actual_agent,
+            frontend_tool_schemas=frontend_tools
+        )
+        app.state.adapter = adapter # store adapter in app state.
+        print(f"Application startup: MCPTools, Agent, and adapter initialized. app.state.adapter: {app.state.adapter}")
+        yield
+    # This block below (after yield) will be executed on application shutdown
+    print("Application shutdown: MCPTools resources (if any managed by 'async with' outside the 'yield') will be released.")
+
+
 # --- FastAPI Setup ---
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # Add CORS middleware
 app.add_middleware(
@@ -31,14 +64,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Initialize Agent and Adapter ---
-
-my_actual_agent = create_agent()
-
-adapter = AgnoVercelAdapter(
-    agent=my_actual_agent,
-    frontend_tool_schemas=frontend_tools
-)
 
 # --- API Endpoints ---
 @app.get("/api/v1/health")
@@ -48,33 +73,24 @@ async def health_check():
 
 class ChatRequest(BaseModel):
     messages: List[Dict[str, Any]]
-    # Include other fields potentially sent by useChat
     sessionId: Optional[str] = None
     userId: Optional[str] = None
-    data: Optional[Dict[str, Any]] = None # For custom data from useChat options
+    data: Optional[Dict[str, Any]] = None
 
 @app.post("/api/v1/agent/run")
 async def handle_chat(request: ChatRequest):
-    """Handles chat requests from the Vercel AI SDK UI."""
-    # Extract session_id and user_id (example: sent via custom data or specific field)
     session_id = request.sessionId or request.data.get("sessionId") if request.data else None
     user_id = request.userId or request.data.get("userId") if request.data else None
 
-    # --- Pass the full message history to the adapter ---
-    # The adapter can decide how to use it, or pass it to the agent if needed
-    # Also pass any other relevant data from the request body if needed
-    print(f"Streaming response with session_id: {session_id}, user_id: {user_id}")  # Debug logging
-    vercel_stream = adapter.stream_response(
-        messages=request.messages or [], # Pass the full history
+    print(f"Streaming response with session_id: {session_id}, user_id: {user_id}")
+    vercel_stream = app.state.adapter.stream_response(
+        messages=request.messages or [],
         session_id=session_id,
         user_id=user_id
-        # Add any other kwargs needed by your agent's arun method
     )
-
     return StreamingResponse(vercel_stream, media_type="text/event-stream")
 
 # --- Run with Uvicorn (for local testing) ---
 if __name__ == "__main__":
     import uvicorn
-    # Make sure to reload the adapter code if you change it
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("API_PORT", "8000")), reload=True)

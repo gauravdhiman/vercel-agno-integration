@@ -1,6 +1,7 @@
 agno==1.4.5
 crawl4ai
-fastapi==0.104.1
+mcp
+fastapi==0.115.12
 google-genai
 googlesearch-python
 pycountry

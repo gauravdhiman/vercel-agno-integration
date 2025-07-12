@@ -1,6 +1,7 @@
 'use client';
 
 import { useChat, type Message } from '@ai-sdk/react';
+import { UIMessage, TextUIPart, ReasoningUIPart, ToolInvocationUIPart, SourceUIPart, FileUIPart, StepStartUIPart } from '@ai-sdk/ui-utils';
 import React, { useRef, useEffect, useState } from 'react';
 import { ChatMessage } from './components/ChatMessage';
 import { ConfirmationModal } from './components/ConfirmationModal';
@@ -8,6 +9,17 @@ import { InputArea } from './components/InputArea';
 import { FrontendToolName, ChangeBackgroundColorParams, DisplayProductCardParams, DisplayToolInfoParams } from './lib/frontend-tools';
 import { validateImageUrl } from './lib/image-utils';
 import DockerVNCViewer from './components/DockerVNCViewer';
+
+let latestMessagePrevRenderContent = "";
+let lastestMessageParts: Array<
+    | TextUIPart
+    | ReasoningUIPart
+    | ToolInvocationUIPart
+    | SourceUIPart
+    | FileUIPart
+    | StepStartUIPart
+  > = [];
+
 // --- Main Chat Component ---
 export default function Page() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -101,8 +113,29 @@ const { messages, input, handleInputChange, handleSubmit, addToolResult, status,
     }
   });
 
+  console.log('Messages: ', messages)
+
   const lastMessage = messages[messages.length - 1];
   const lastAssistantMessage = (lastMessage?.role === 'assistant') ? lastMessage : undefined;
+
+  // Update text parts for any new content from prev render
+  // if(lastAssistantMessage) {
+  //   if (lastAssistantMessage.content.length === 0) {
+  //     lastestMessageParts = [...lastAssistantMessage.parts];
+  //   } else {
+  //     if (lastAssistantMessage.content.length !== latestMessagePrevRenderContent.length) {
+  //       // find the updated content in the lastAssistantMessage
+  //       const updatedContent = lastAssistantMessage.content.slice(latestMessagePrevRenderContent.length);
+  //       // update the latestMessagePrevRenderContent
+  //       latestMessagePrevRenderContent = lastAssistantMessage.content;
+  //       // add the updated content as new text part
+  //       lastestMessageParts.push({ type: 'text', text: updatedContent });
+  //       lastAssistantMessage.parts = [...lastestMessageParts];
+  //     }
+  //   }
+  // } else {
+  //   latestMessagePrevRenderContent = "";
+  // }
 
   // Get pending tool invocations from the last assistant message
   const pendingToolInvocations = lastAssistantMessage?.parts?.filter(

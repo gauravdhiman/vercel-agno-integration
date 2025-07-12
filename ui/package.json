@@ -11,6 +11,7 @@
   "packageManager": "pnpm@8.15.3",
   "dependencies": {
     "@ai-sdk/react": "1.2.12",
+    "@ai-sdk/ui-utils": "link:/Users/gauravdhiman/projects/python/ai/ai/packages/ui-utils/src",
     "ai": "^4.3.15",
     "next": "^15.3.2",
     "react": "^18.2.0",

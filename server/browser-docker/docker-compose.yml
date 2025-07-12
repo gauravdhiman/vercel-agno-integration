@@ -5,8 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: agno-browser-sandbox:latest # Local image name
-    container_name: agno_browser_sandbox_container # Specific container name
+    image: agno-browser-sandbox:latest 
+    container_name: agno_browser_sandbox_container 
     ports:
       # API for AgnoBrowserToolkit (host:container)
       - "8004:8003"  # AgnoBrowserToolkit default host_port maps to browser_api.py port
@@ -19,35 +19,37 @@ services:
       # Chrome DevTools Protocol (optional, for debugging)
       - "9222:9222"
     environment:
-      # Consistent with Suna's supervisord.conf and Dockerfile defaults
-      - VNC_PASSWORD=${VNC_PASSWORD:-agnopass} # Default VNC password for Agno
-      - RESOLUTION=${RESOLUTION:-1024x768x24}
+      - VNC_PASSWORD=${VNC_PASSWORD:-agnopass}
+      - RESOLUTION=${RESOLUTION:-1024x768x24} # More common desktop resolution
       - RESOLUTION_WIDTH=${RESOLUTION_WIDTH:-1024}
-      - RESOLUTION_HEIGHT=${RESOLUTION_HEIGHT:-768}
-      - CHROME_PERSISTENT_SESSION=${CHROME_PERSISTENT_SESSION:-true}
-      - ANONYMIZED_TELEMETRY=false # As set in Suna's Dockerfile
-      # Ensure CHROME_DEBUGGING_PORT is set if browser_api.py relies on it (Suna's does)
+      - RESOLUTION_HEIGHT=${RESOLUTION_HEIGHT:-764}
+      - CHROME_PERSISTENT_SESSION=${CHROME_PERSISTENT_SESSION:-true} 
+      - ANONYMIZED_TELEMETRY=false
       - CHROME_DEBUGGING_PORT=9222
+      - TZ=America/New_York # Example: Common timezone
+      - LANG=en_US.UTF-8    # Example: Common locale
+      # Ensure this path is writable by the user running Chrome in the container
+      - CHROME_USER_DATA_DIR=/app/browser_user_data 
     volumes:
-      # Mount a local directory to /workspace inside the container for persistence/interaction
-      # Replace ./local_workspace with the desired host path or remove for an anonymous volume
       - ./workspace:/workspace 
-      # For X11 forwarding if running Xvfb on host, usually not needed with Dockerized Xvfb
-      # - /tmp/.X11-unix:/tmp/.X11-unix 
+      # Volume for persistent browser profile data
+      - browser_user_data:/app/browser_user_data 
     restart: unless-stopped
-    shm_size: '2gb' # Recommended for browsers
+    shm_size: '2gb' 
     cap_add:
-      - SYS_ADMIN # Often needed for full browser functionality and debugging tools
+      - SYS_ADMIN
     security_opt:
-      - seccomp:unconfined # May be needed for certain Chrome/Playwright features
+      - seccomp:unconfined 
     tmpfs:
-      - /tmp # For temporary files within the container
+      - /tmp
+    # Healthcheck commented out as per previous step, can be re-enabled later
     # healthcheck:
-    #   test: ["CMD", "nc", "-z", "localhost", "5901"] # VNC server check
+    #   test: ["CMD", "nc", "-z", "localhost", "5901"]
     #   interval: 15s
     #   timeout: 5s
     #   retries: 5
-    #   start_period: 30s # Give more time for supervisord services to start
+    #   start_period: 30s
 
-# volumes:
-#   workspace: # Defines a named volume if you remove the bind mount above
+volumes:
+  workspace:
+  browser_user_data: # Named volume for browser profile

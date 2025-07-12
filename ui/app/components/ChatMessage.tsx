@@ -21,9 +21,15 @@ interface ToolInvocationPart {
   toolInvocation: FrontendToolInvocation;
 }
 
+// --- Enhanced Message Type (mirror from page.tsx or import if centralized) ---
+interface EnhancedMessage extends Message {
+  displayableTextParts: string[];
+}
+
+
 type MessagePart = TextPart | ToolInvocationPart;
 
-export function ChatMessage({ message }: { message: Message }) {
+export function ChatMessage({ message }: { message: EnhancedMessage }) { // Changed to EnhancedMessage
   const isUser = message.role === 'user';
 
   if (isUser) {
@@ -48,8 +54,12 @@ export function ChatMessage({ message }: { message: Message }) {
   // Process all message parts in order
   let messageParts: MessagePart[] = [];
 
-  if (message.parts && message.parts.length > 0) {
-    // If the message has parts, use them directly
+  // For assistant messages, we prioritize displayableTextParts if available and populated
+  if (message.role === 'assistant' && message.displayableTextParts && message.displayableTextParts.length > 0) {
+    // Render each displayableTextPart as a separate text block
+    // Tool invocations will be handled after these text parts if they exist in message.parts
+  } else if (message.parts && message.parts.length > 0) {
+    // If the message has parts, use them directly (fallback or for non-streaming parts)
     messageParts = message.parts.filter(part =>
       isTextPart(part) || isToolInvocationPart(part)
     ) as MessagePart[];
@@ -93,10 +103,21 @@ export function ChatMessage({ message }: { message: Message }) {
 
   return (
     <div className="flex flex-col space-y-2">
-      {/* Render all parts in sequence */}
+      {/* Render displayableTextParts for assistant messages first */}
+      {message.role === 'assistant' && message.displayableTextParts && message.displayableTextParts.map((textChunk, idx) => (
+        <div key={`text-chunk-${message.id}-${idx}`} className="flex justify-start">
+          <div className="max-w-[80%] rounded-2xl px-5 py-3 shadow-sm bg-gray-100 text-gray-800">
+            <div className="whitespace-wrap prose dark:prose-invert max-w-none [&>*]:my-0 prose-li:my-0">
+              <ReactMarkdown unwrapDisallowed={true}>{textChunk}</ReactMarkdown>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {/* Render other message parts (like tool invocations) */}
       {messageParts.map((part, index) => {
-        // Text part
-        if (isTextPart(part)) {
+        // Text part (only render if displayableTextParts was not used or is empty for assistant)
+        if (isTextPart(part) && !(message.role === 'assistant' && message.displayableTextParts && message.displayableTextParts.length > 0)) {
           return (
             <div key={`text-${index}`} className="flex justify-start">
               <div className="max-w-[80%] rounded-2xl px-5 py-3 shadow-sm bg-gray-100 text-gray-800">

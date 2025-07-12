@@ -9,7 +9,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field as PydanticField # Alias to avoid conflict with Agno's File
 
 # --- Agno Imports ---
-from agno.agent import Agent # Assuming Agent is the primary class, not Team for this example
+from agno.agent import Agent
 from agno.models.message import Message as AgnoMessage
 from agno.run.response import RunEvent, RunResponse
 from agno.tools.function import Function
@@ -304,7 +304,6 @@ class AgnoVercelAdapter:
                                 log_debug(f"[Agno-Vercel Adapter][{self.agent.name}]: Skipping already processed tool call completion: {tool_call_id}")
                                 continue
 
-                            print("Tool Details When Completed >>>>>> ", tool_call_data)
                             tool_result = tool_call_data.get("content")
                             if not tool_result:
                                 # if there is no content / response from tool, tool is still executing, so dont process.
